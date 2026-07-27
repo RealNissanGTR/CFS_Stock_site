@@ -161,23 +161,7 @@ def home(request: Request):
 
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request):
-    user = require_admin(request)
-    with SessionLocal() as db:
-        stocks = db.query(Stock).order_by(Stock.category, Stock.stock_name, Stock.location).all()
-        users = db.query(User).order_by(User.username).all()
-        logs = db.query(Logs).order_by(Logs.timestamp.desc()).limit(200).all()
-
-    return templates.TemplateResponse(
-        "dashboard.html",
-        {
-            "request": request,
-            "user": user,
-            "stocks": stocks,
-            "users": users,
-            "logs": logs,
-            "message": request.query_params.get("message", ""),
-        },
-    )
+    return RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.get("/admin", response_class=HTMLResponse)
@@ -222,10 +206,6 @@ def inventory_add(
         comments=comments.strip() or None,
         user_is_admin=user.is_admin,
     )
-
-    redirect_path = "/dashboard" if user.is_admin else "/home"
-    message = "Inventory added successfully." if success else "Unable to add inventory."
-    return RedirectResponse(url=f"{redirect_path}?message={message}", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.post("/inventory/remove")
