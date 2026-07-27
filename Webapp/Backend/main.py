@@ -5,8 +5,9 @@ from typing import Optional
 
 import jwt
 from fastapi import FastAPI, Form, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 
 from db.db_init import (
     SessionLocal,
@@ -23,6 +24,7 @@ from db.db_init import (
 )
 
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="../FrontEnd"), name="static")
 templates = Jinja2Templates(directory="../FrontEnd")
 
 SECRET_KEY = os.getenv("SECRET_KEY", "change-this-secret")
@@ -86,13 +88,49 @@ def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request, "error": None})
 
 
+def render_home(request: Request, message: str = ""):
+    user = get_current_user(request)
+    if user is None:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    with SessionLocal() as db:
+        stocks = db.query(Stock).order_by(Stock.category, Stock.stock_name, Stock.location).all()
+        users = []
+        logs = []
+        if user.is_admin:
+            users = db.query(User).order_by(User.username).all()
+            logs = db.query(Logs).order_by(Logs.timestamp.desc()).limit(100).all()
+
+    return templates.TemplateResponse(
+        "dashboard.html",
+        {
+            "request": request,
+            "user": user,
+            "stocks": stocks,
+            "users": users,
+            "logs": logs,
+            "message": message,
+        },
+    )
+
+
+@app.get("/home", response_class=HTMLResponse)
+def home(request: Request):
+    return render_home(request)
+
+
+@app.get("/dashboard", response_class=HTMLResponse)
+def dashboard(request: Request):
+    return render_home(request)
+
+
 @app.post("/login")
 def login(request: Request, username: str = Form(...), password: str = Form(...)):
     with SessionLocal() as db:
         user = db.query(User).filter_by(username=username.strip()).first()
         if user and verify_password(password.strip(), user.password_hash):
             token = create_access_token(user.username, bool(user.is_admin))
-            response = RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+            response = RedirectResponse(url="/home", status_code=status.HTTP_303_SEE_OTHER)
             response.set_cookie(
                 key=COOKIE_NAME,
                 value=token,
@@ -115,26 +153,6 @@ def logout():
     response = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
     response.delete_cookie(COOKIE_NAME)
     return response
-
-
-@app.get("/dashboard", response_class=HTMLResponse)
-def dashboard(request: Request):
-    user = get_current_user(request)
-    if user is None:
-        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-
-    with SessionLocal() as db:
-        stocks = db.query(Stock).order_by(Stock.category, Stock.stock_name, Stock.location).all()
-
-    return templates.TemplateResponse(
-        "dashboard.html",
-        {
-            "request": request,
-            "user": user,
-            "stocks": stocks,
-            "message": request.query_params.get("message", ""),
-        },
-    )
 
 
 @app.post("/inventory/add")
