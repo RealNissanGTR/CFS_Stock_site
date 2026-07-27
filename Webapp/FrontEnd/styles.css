@@ -140,6 +140,16 @@ input, textarea, select {
     color: var(--text);
 }
 
+select {
+    color: #ffffff !important;
+    background: #121212 !important;
+}
+
+select option {
+    color: #ffffff !important;
+    background: #121212 !important;
+}
+
 input:focus,
 textarea:focus,
 select:focus {
