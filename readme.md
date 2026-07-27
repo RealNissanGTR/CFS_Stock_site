@@ -1,18 +1,19 @@
-# CFS Stock — Quick Start 
-This is a small local web app to track stock across different locations
+# CFS Stock — Quick Start
+
+This is a small local web app to track stock across different locations.
 
 ---
 
 ## What this does
-- View, add, remove and move stock between locations  
-- Admin panel for creating/deleting items, importing Excel, exporting XLSX and viewing logs  
+- View, add, remove and move stock between locations
+- Admin panel for creating/deleting items, importing Excel, exporting XLSX and viewing logs
 - Local database file: `Webapp/Backend/stock.db`
 
 ---
 
 ## 1 — Install required software
-1. Install Python 3.10+ from https://www.python.org/downloads/  
-   - During install, check "Add Python to PATH".  
+1. Install Python 3.10+ from https://www.python.org/downloads/
+   - During install, check "Add Python to PATH".
 2. (Optional) Install Git: https://git-scm.com/downloads
 
 ---
@@ -23,9 +24,7 @@ Open PowerShell and run the commands below (paste line-by-line). Adjust paths if
 ```powershell
 cd "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend"
 python -m venv venv
-.\venv\Scripts\Activate.ps1     # if using PowerShell
-# OR for Command Prompt:
-# .\venv\Scripts\activate.bat
+.\venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -r "..\..\requirements.txt"
 ```
