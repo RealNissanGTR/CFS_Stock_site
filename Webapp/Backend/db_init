@@ -1,6 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, create_engine, UniqueConstraint
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
-from typing import Optional
 import os
 import hashlib
 import binascii
