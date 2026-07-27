@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Panel - CFS Stock</title>
+</head>
+<body>
+    <header>
+        <h1>Admin Panel</h1>
+        <p>Signed in as {{ user.username }}</p>
+        <p><a href="/dashboard">Dashboard</a> | <a href="/logout">Logout</a></p>
+    </header>
+
+    <section>
+        <h2>Users</h2>
+        <table border="1" cellpadding="6" cellspacing="0">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Admin</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for target in users %}
+                    <tr>
+                        <td>{{ target.username }}</td>
+                        <td>{{ "Yes" if target.is_admin else "No" }}</td>
+                        <td>
+                            {% if target.username != user.username %}
+                                <form method="post" action="/admin/toggle_admin/{{ target.id }}" style="display:inline;">
+                                    <button type="submit">
+                                        {{ "Revoke admin" if target.is_admin else "Make admin" }}
+                                    </button>
+                                </form>
+                            {% else %}
+                                Current
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h3>Create user</h3>
+        <form method="post" action="/admin/add_user">
+            <label>Username <input type="text" name="username" required></label><br>
+            <label>Password <input type="password" name="password" required></label><br>
+            <label><input type="checkbox" name="is_admin"> Admin</label><br>
+            <button type="submit">Create user</button>
+        </form>
+    </section>
+
+    <section>
+        <h2>Stock management</h2>
+        <form method="post" action="/admin/create_stock">
+            <label>Item name <input type="text" name="stock_name" required></label><br>
+            <label>Category <input type="text" name="category"></label><br>
+            <label>Quantity <input type="number" name="quantity" min="0" required></label><br>
+            <label>Location <input type="text" name="location" value="Workshop" required></label><br>
+            <label>Comments <input type="text" name="comments"></label><br>
+            <button type="submit">Create stock item</button>
+        </form>
+
+        <h3>Delete stock item</h3>
+        <form method="post" action="/admin/delete_stock">
+            <label>Item name <input type="text" name="stock_name" required></label><br>
+            <label>Location <input type="text" name="location" value="Workshop" required></label><br>
+            <label>Comments <input type="text" name="comments"></label><br>
+            <button type="submit">Delete stock item</button>
+        </form>
+    </section>
+
+    <section>
+        <h2>Activity logs</h2>
+        <table border="1" cellpadding="6" cellspacing="0">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Action</th>
+                    <th>Item</th>
+                    <th>Category</th>
+                    <th>Qty</th>
+                    <th>Location</th>
+                    <th>User</th>
+                    <th>Work order</th>
+                    <th>Purchase order</th>
+                    <th>Comments</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                    <tr>
+                        <td>{{ log.timestamp }}</td>
+                        <td>{{ log.action }}</td>
+                        <td>{{ log.stock_name }}</td>
+                        <td>{{ log.category or "" }}</td>
+                        <td>{{ log.quantity }}</td>
+                        <td>{{ log.location }}</td>
+                        <td>{{ log.performed_by or "" }}</td>
+                        <td>{{ log.work_order or "" }}</td>
+                        <td>{{ log.purchase_order or "" }}</td>
+                        <td>{{ log.comments or "" }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</body>
+</html>
