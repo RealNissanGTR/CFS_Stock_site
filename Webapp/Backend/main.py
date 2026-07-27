@@ -1,13 +1,16 @@
 import hashlib
 import hmac
+import io
+import json
 import os
 from collections import defaultdict
 from pathlib import Path
 from typing import Optional
 from fastapi import FastAPI, Form, Request, status, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from openpyxl import Workbook
 
 from db.db_init import (
     SessionLocal,
@@ -522,3 +525,83 @@ def inventory_move(
 @app.get("/landing")
 def landing_redirect():
     return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.get("/admin/export_data")
+def admin_export_data(request: Request):
+    require_admin(request)
+
+    with SessionLocal() as db:
+        stocks = db.query(Stock).order_by(
+            Stock.category,
+            Stock.product_name,
+            Stock.item_code,
+            Stock.location,
+        ).all()
+
+        logs = db.query(Logs).order_by(Logs.timestamp.desc()).all()
+
+    wb = Workbook()
+    stock_ws = wb.active
+    stock_ws.title = "Stock"
+
+    stock_headers = [
+        "ID",
+        "Category",
+        "Item code",
+        "Product name",
+        "Count",
+        "Location",
+    ]
+    stock_ws.append(stock_headers)
+
+    for stock in stocks:
+        stock_ws.append([
+            stock.id,
+            stock.category,
+            stock.item_code,
+            stock.product_name,
+            stock.stock_count,
+            stock.location,
+        ])
+
+    log_ws = wb.create_sheet(title="Logs")
+    log_headers = [
+        "ID",
+        "Timestamp",
+        "Action",
+        "Stock name",
+        "Category",
+        "Quantity",
+        "Location",
+        "Performed by",
+        "Work order",
+        "Purchase order",
+        "Comments",
+    ]
+    log_ws.append(log_headers)
+
+    for log in logs:
+        log_ws.append([
+            log.id,
+            log.timestamp.isoformat() if hasattr(log.timestamp, "isoformat") else str(log.timestamp),
+            log.action,
+            log.stock_name,
+            log.category,
+            log.quantity,
+            log.location,
+            log.performed_by,
+            log.work_order,
+            log.purchase_order,
+            log.comments,
+        ])
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=data-export.xlsx"},
+    )
