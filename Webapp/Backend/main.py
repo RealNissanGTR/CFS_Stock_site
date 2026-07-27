@@ -4,6 +4,7 @@ import io
 import json
 import os
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from fastapi import FastAPI, Form, Request, status, HTTPException
@@ -600,8 +601,9 @@ def admin_export_data(request: Request):
     wb.save(output)
     output.seek(0)
 
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     return StreamingResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=data-export.xlsx"},
+        headers={"Content-Disposition": f"attachment; filename=data-export-{timestamp}.xlsx"},
     )

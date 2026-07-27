@@ -276,11 +276,11 @@ tbody tr td a {
 }
 
 .btn-add {
-    background: linear-gradient(135deg, #22c55e, #16a34a);
+    background: linear-gradient(135deg, #22c55e, #0a5324);
 }
 
 .btn-remove {
-    background: linear-gradient(135deg, #ef4444, #dc2626);
+    background: linear-gradient(135deg, #c1c128, #58770f);
 }
 
 @media (max-width: 900px) {
