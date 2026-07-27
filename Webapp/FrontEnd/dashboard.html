@@ -2,174 +2,140 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Home - CFS Stock</title>
+    <title>Admin Dashboard - CFS Stock</title>
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
     <main class="page-shell">
         <header>
             <div>
-                <h1>Home</h1>
-                <p>Welcome back, {{ user.username }}{% if user.is_admin %} <span class="badge">Admin</span>{% endif %}</p>
+                <h1>Admin Dashboard</h1>
+                <p>Signed in as {{ user.username }} <span class="badge">Admin</span></p>
             </div>
             <nav class="nav-links">
                 <a href="/home">Home</a>
-                <a href="/logout">Logout</a>
                 {% if user.is_admin %}
-                    <a href="/admin">Admin</a>
+                <a href="/admin">Admin panel</a>
                 {% endif %}
+                <a href="/logout">Logout</a>
             </nav>
         </header>
 
         {% if message %}
-            <div class="card" style="border-left: 4px solid var(--primary);">
-                {{ message }}
-            </div>
+        <div class="card" style="margin-bottom: 1rem;">
+            {{ message }}
+        </div>
         {% endif %}
-
-        <section class="hero">
-            <h2>Inventory overview</h2>
-            <p>Track stock counts, locations and activity for Workshop and Paddock in one place.</p>
-        </section>
 
         <div class="section-group">
             <section class="section-block">
-                <h2>Current stock</h2>
+                <h2>User management</h2>
+
                 <div class="table-wrap">
                     <table>
                         <thead>
                             <tr>
-                                <th>Category</th>
-                                <th>Item</th>
-                                <th>Count</th>
-                                <th>Location</th>
+                                <th>Username</th>
+                                <th>Role</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for stock in stocks %}
-                                <tr>
-                                    <td>{{ stock.category or "Unassigned" }}</td>
-                                    <td>{{ stock.stock_name }}</td>
-                                    <td>{{ stock.stock_count }}</td>
-                                    <td>{{ stock.location }}</td>
-                                </tr>
+                            {% for target in users %}
+                            <tr>
+                                <td>{{ target.username }}</td>
+                                <td>{{ "Admin" if target.is_admin else "User" }}</td>
+                                <td>
+                                    {% if target.username != user.username %}
+                                    <form method="post" action="/admin/delete_user/{{ target.id }}" style="display:inline;"
+                                          onsubmit="return confirm('Delete this user? This cannot be undone.');">
+                                        <button type="submit">Delete</button>
+                                    </form>
+                                    {% else %}
+                                    Current
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3 style="margin-top: 1rem;">Edit user</h3>
+                <form class="form-grid" method="post" action="/admin/edit_user">
+                    <label>
+                        Select user
+                        <select name="user_id" required>
+                            {% for target in users %}
+                            <option value="{{ target.id }}">{{ target.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>New username <input type="text" name="new_username" placeholder="Leave blank to keep current"></label>
+                    <label>New password <input type="password" name="new_password" placeholder="Leave blank to keep current"></label>
+                    <label><input type="checkbox" name="is_admin"> Admin</label>
+                    <button type="submit">Save changes</button>
+                </form>
+            </section>
+
+            <section class="section-block">
+                <h2>Stock management</h2>
+                <form class="form-grid" method="post" action="/admin/create_stock">
+                    <label>Item name <input type="text" name="stock_name" required></label>
+                    <label>Category <input type="text" name="category"></label>
+                    <label>Quantity <input type="number" name="quantity" min="0" required></label>
+                    <label>Location <input type="text" name="location" value="Workshop" required></label>
+                    <label>Comments <input type="text" name="comments"></label>
+                    <button type="submit">Create stock item</button>
+                </form>
+
+                <h3 style="margin-top: 1rem;">Delete stock item</h3>
+                <form class="form-grid" method="post" action="/admin/delete_stock"
+                      onsubmit="return confirm('Delete this stock item? This cannot be undone.');">
+                    <label>Item name <input type="text" name="stock_name" required></label>
+                    <label>Location <input type="text" name="location" value="Workshop" required></label>
+                    <label>Comments <input type="text" name="comments"></label>
+                    <button type="submit">Delete stock item</button>
+                </form>
+            </section>
+
+            <section class="section-block">
+                <h2>Activity logs</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Action</th>
+                                <th>Item</th>
+                                <th>Category</th>
+                                <th>Qty</th>
+                                <th>Location</th>
+                                <th>User</th>
+                                <th>Work order</th>
+                                <th>Purchase order</th>
+                                <th>Comments</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in logs %}
+                            <tr>
+                                <td>{{ log.timestamp }}</td>
+                                <td>{{ log.action }}</td>
+                                <td>{{ log.stock_name }}</td>
+                                <td>{{ log.category or "" }}</td>
+                                <td>{{ log.quantity }}</td>
+                                <td>{{ log.location }}</td>
+                                <td>{{ log.performed_by or "" }}</td>
+                                <td>{{ log.work_order or "" }}</td>
+                                <td>{{ log.purchase_order or "" }}</td>
+                                <td>{{ log.comments or "" }}</td>
+                            </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
             </section>
-
-            <section class="section-block">
-                <div style="display:grid; gap:1.75rem;">
-                    <div>
-                        <h2>Add inventory</h2>
-                        <form class="form-grid" method="post" action="/inventory/add">
-                            <label>Category <input type="text" name="category"></label>
-                            <label>Item name <input type="text" name="stock_name" required></label>
-                            <label>Quantity <input type="number" name="quantity" min="1" required></label>
-                            <label>Location <input type="text" name="location" value="Workshop" required></label>
-                            <label>Work Order <input type="text" name="work_order" required></label>
-                            <label>Comments <input type="text" name="comments"></label>
-                            <button type="submit">Add inventory</button>
-                        </form>
-                    </div>
-
-                    <div>
-                        <h2>Remove inventory</h2>
-                        <form class="form-grid" method="post" action="/inventory/remove">
-                            <label>Category <input type="text" name="category"></label>
-                            <label>Item name <input type="text" name="stock_name" required></label>
-                            <label>Quantity <input type="number" name="quantity" min="1" required></label>
-                            <label>Location <input type="text" name="location" value="Workshop" required></label>
-                            <label>Purchase Order <input type="text" name="purchase_order" required></label>
-                            <label>Comments <input type="text" name="comments"></label>
-                            <button type="submit">Remove inventory</button>
-                        </form>
-                    </div>
-                </div>
-            </section>
-
-            {% if user.is_admin %}
-                <section class="section-block">
-                    <h2>User management</h2>
-                    <div class="table-wrap">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Username</th>
-                                    <th>Role</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for target in users %}
-                                    <tr>
-                                        <td>{{ target.username }}</td>
-                                        <td>{{ "Admin" if target.is_admin else "User" }}</td>
-                                        <td>
-                                            {% if target.username != user.username %}
-                                                <form method="post" action="/admin/toggle_admin/{{ target.id }}">
-                                                    <button type="submit">
-                                                        {{ "Revoke admin" if target.is_admin else "Make admin" }}
-                                                    </button>
-                                                </form>
-                                            {% else %}
-                                                Current
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <h3 style="margin-top: 1.5rem;">Create user</h3>
-                    <form class="form-grid" method="post" action="/admin/add_user">
-                        <label>Username <input type="text" name="username" required></label>
-                        <label>Password <input type="password" name="password" required></label>
-                        <label><input type="checkbox" name="is_admin"> Admin</label>
-                        <button type="submit">Create user</button>
-                    </form>
-                </section>
-
-                <section class="section-block">
-                    <h2>Recent activity logs</h2>
-                    <div class="table-wrap">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Time</th>
-                                    <th>Action</th>
-                                    <th>Item</th>
-                                    <th>Category</th>
-                                    <th>Qty</th>
-                                    <th>Location</th>
-                                    <th>User</th>
-                                    <th>Work order</th>
-                                    <th>Purchase order</th>
-                                    <th>Comments</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for log in logs %}
-                                    <tr>
-                                        <td>{{ log.timestamp }}</td>
-                                        <td>{{ log.action }}</td>
-                                        <td>{{ log.stock_name }}</td>
-                                        <td>{{ log.category or "" }}</td>
-                                        <td>{{ log.quantity }}</td>
-                                        <td>{{ log.location }}</td>
-                                        <td>{{ log.performed_by or "" }}</td>
-                                        <td>{{ log.work_order or "" }}</td>
-                                        <td>{{ log.purchase_order or "" }}</td>
-                                        <td>{{ log.comments or "" }}</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-            {% endif %}
         </div>
     </main>
 </body>

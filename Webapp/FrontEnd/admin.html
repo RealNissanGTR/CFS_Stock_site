@@ -10,17 +10,26 @@
         <header>
             <div>
                 <h1>Admin Panel</h1>
-                <p>Signed in as {{ user.username }}</p>
+                <p>Signed in as {{ user.username }} <span class="badge">Admin</span></p>
             </div>
             <nav class="nav-links">
+                <a href="/home">Home</a>
+                {% if user.is_admin %}
                 <a href="/dashboard">Dashboard</a>
+                {% endif %}
                 <a href="/logout">Logout</a>
             </nav>
         </header>
 
+        {% if message %}
+        <div class="card" style="margin-bottom: 1rem;">
+            {{ message }}
+        </div>
+        {% endif %}
+
         <div class="section-group">
             <section class="section-block">
-                <h2>Users</h2>
+                <h2>User management</h2>
                 <div class="table-wrap">
                     <table>
                         <thead>
@@ -32,87 +41,21 @@
                         </thead>
                         <tbody>
                             {% for target in users %}
-                                <tr>
-                                    <td>{{ target.username }}</td>
-                                    <td>{{ "Admin" if target.is_admin else "User" }}</td>
-                                    <td>
-                                        {% if target.username != user.username %}
-                                            <form method="post" action="/admin/toggle_admin/{{ target.id }}">
-                                                <button type="submit">
-                                                    {{ "Revoke admin" if target.is_admin else "Make admin" }}
-                                                </button>
-                                            </form>
-                                        {% else %}
-                                            Current
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-
-                <h3 style="margin-top: 1.5rem;">Create user</h3>
-                <form class="form-grid" method="post" action="/admin/add_user">
-                    <label>Username <input type="text" name="username" required></label>
-                    <label>Password <input type="password" name="password" required></label>
-                    <label><input type="checkbox" name="is_admin"> Admin</label>
-                    <button type="submit">Create user</button>
-                </form>
-            </section>
-
-            <section class="section-block">
-                <h2>Stock management</h2>
-                <form class="form-grid" method="post" action="/admin/create_stock">
-                    <label>Item name <input type="text" name="stock_name" required></label>
-                    <label>Category <input type="text" name="category"></label>
-                    <label>Quantity <input type="number" name="quantity" min="0" required></label>
-                    <label>Location <input type="text" name="location" value="Workshop" required></label>
-                    <label>Comments <input type="text" name="comments"></label>
-                    <button type="submit">Create stock item</button>
-                </form>
-
-                <h3 style="margin-top: 1.5rem;">Delete stock item</h3>
-                <form class="form-grid" method="post" action="/admin/delete_stock">
-                    <label>Item name <input type="text" name="stock_name" required></label>
-                    <label>Location <input type="text" name="location" value="Workshop" required></label>
-                    <label>Comments <input type="text" name="comments"></label>
-                    <button type="submit">Delete stock item</button>
-                </form>
-            </section>
-
-            <section class="section-block">
-                <h2>Activity logs</h2>
-                <div class="table-wrap">
-                    <table>
-                        <thead>
                             <tr>
-                                <th>Time</th>
-                                <th>Action</th>
-                                <th>Item</th>
-                                <th>Category</th>
-                                <th>Qty</th>
-                                <th>Location</th>
-                                <th>User</th>
-                                <th>Work order</th>
-                                <th>Purchase order</th>
-                                <th>Comments</th>
+                                <td>{{ target.username }}</td>
+                                <td>{{ "Admin" if target.is_admin else "User" }}</td>
+                                <td>
+                                    {% if target.username != user.username %}
+                                    <form method="post" action="/admin/toggle_admin/{{ target.id }}" style="display:inline;">
+                                        <button type="submit">
+                                            {{ "Revoke admin" if target.is_admin else "Make admin" }}
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                    Current
+                                    {% endif %}
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            {% for log in logs %}
-                                <tr>
-                                    <td>{{ log.timestamp }}</td>
-                                    <td>{{ log.action }}</td>
-                                    <td>{{ log.stock_name }}</td>
-                                    <td>{{ log.category or "" }}</td>
-                                    <td>{{ log.quantity }}</td>
-                                    <td>{{ log.location }}</td>
-                                    <td>{{ log.performed_by or "" }}</td>
-                                    <td>{{ log.work_order or "" }}</td>
-                                    <td>{{ log.purchase_order or "" }}</td>
-                                    <td>{{ log.comments or "" }}</td>
-                                </tr>
                             {% endfor %}
                         </tbody>
                     </table>

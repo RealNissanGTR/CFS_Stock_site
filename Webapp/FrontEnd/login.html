@@ -9,12 +9,12 @@
     <main class="page-shell">
         <section class="hero">
             <h1>Sign in</h1>
-            <p>Access inventory controls for Workshop and Paddock.</p>
+            <p>Access the stock management area for Workshop and Paddock.</p>
 
             {% if error %}
-                <div class="card" style="border-left: 4px solid var(--accent);">
-                    <strong>Error:</strong> {{ error }}
-                </div>
+            <div class="card" style="margin-bottom: 1rem; border-left: 4px solid #fb7185;">
+                <strong>Error:</strong> {{ error }}
+            </div>
             {% endif %}
 
             <form class="form-grid" method="post" action="/login">

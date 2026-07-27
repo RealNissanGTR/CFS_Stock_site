@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Home - CFS Stock</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <main class="page-shell">
+        <header>
+            <div>
+                <h1>Home</h1>
+                <p>Welcome back, {{ user.username }}</p>
+            </div>
+            <nav class="nav-links">
+                <a href="/home">Home</a>
+                {% if user.is_admin %}
+                <a href="/admin">Admin panel</a>
+                {% endif %}
+                <a href="/logout">Logout</a>
+            </nav>
+        </header>
+
+        {% if message %}
+        <div class="card" style="margin-bottom: 1rem;">
+            {{ message }}
+        </div>
+        {% endif %}
+
+        <section class="hero">
+            <h2>Current stock overview</h2>
+            <p>View workshop and paddock stock levels from this home page.</p>
+        </section>
+
+        <div class="section-group">
+            <section class="section-block">
+                <h2>Current stock</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Item</th>
+                                <th>Count</th>
+                                <th>Location</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for stock in stocks %}
+                            <tr>
+                                <td>{{ stock.category or "Unassigned" }}</td>
+                                <td>{{ stock.stock_name }}</td>
+                                <td>{{ stock.stock_count }}</td>
+                                <td>{{ stock.location }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="section-block">
+                <h2>Add inventory</h2>
+                <form class="form-grid" method="post" action="/inventory/add">
+                    <label>Category <input type="text" name="category"></label>
+                    <label>Item name <input type="text" name="stock_name" required></label>
+                    <label>Quantity <input type="number" name="quantity" min="1" required></label>
+                    <label>Location <input type="text" name="location" value="Workshop" required></label>
+                    <label>Work Order <input type="text" name="work_order" required></label>
+                    <label>Comments <input type="text" name="comments"></label>
+                    <button type="submit">Add inventory</button>
+                </form>
+            </section>
+
+            <section class="section-block">
+                <h2>Remove inventory</h2>
+                <form class="form-grid" method="post" action="/inventory/remove">
+                    <label>Category <input type="text" name="category"></label>
+                    <label>Item name <input type="text" name="stock_name" required></label>
+                    <label>Quantity <input type="number" name="quantity" min="1" required></label>
+                    <label>Location <input type="text" name="location" value="Workshop" required></label>
+                    <label>Purchase Order <input type="text" name="purchase_order" required></label>
+                    <label>Comments <input type="text" name="comments"></label>
+                    <button type="submit">Remove inventory</button>
+                </form>
+            </section>
+        </div>
+    </main>
+</body>
+</html>
