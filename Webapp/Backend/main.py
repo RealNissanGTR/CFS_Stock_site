@@ -1,9 +1,7 @@
 import hashlib
 import hmac
 import io
-import json
 import os
-from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -202,15 +200,33 @@ def home(request: Request):
             Stock.item_code,
             Stock.location,
         ).all()
+
         categories = sorted({stock.category or "Unassigned" for stock in stocks})
-        products = [
-            {
-                "item_code": stock.item_code,
-                "product_name": stock.product_name,
-                "category": stock.category or "Unassigned",
-            }
-            for stock in stocks
-        ]
+
+        products_map = {}
+        for s in stocks:
+            key = s.item_code
+            if key not in products_map:
+                products_map[key] = {
+                    "item_code": s.item_code,
+                    "product_name": s.product_name,
+                    "category": s.category or "Unassigned",
+                    "workshop": 0,
+                    "paddock": 0,
+                    "other_locations": {},
+                    "total": 0,
+                }
+            count = s.stock_count or 0
+            loc = (s.location or "").strip().lower()
+            if loc == "workshop":
+                products_map[key]["workshop"] += count
+            elif loc == "paddock":
+                products_map[key]["paddock"] += count
+            else:
+                products_map[key]["other_locations"][s.location] = products_map[key]["other_locations"].get(s.location, 0) + count
+            products_map[key]["total"] += count
+
+        products = list(products_map.values())
 
     return templates.TemplateResponse(
         "home.html",

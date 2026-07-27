@@ -5,6 +5,14 @@
     <title>Home - CFS Stock</title>
     <link rel="stylesheet" href="/static/styles.css">
     <link rel="icon" type="image/png" href="/static/img/cfs_logo.png">
+    <style>
+        .item-counter {
+            font-size: 0.875rem;
+            color: rgba(255,255,255,0.8);
+            margin-top: 0.25rem;
+        }
+        .item-counter small { color: rgba(255,255,255,0.55); margin-left: .5rem; }
+    </style>
 </head>
 <body>
     <main class="page-shell">
@@ -51,11 +59,20 @@
                     <select id="stock-product" name="item_code" required>
                         <option value="">Select product</option>
                         {% for product in products %}
-                        <option value="{{ product.item_code }}" data-category="{{ product.category }}">
+                        <option
+                            value="{{ product.item_code }}"
+                            data-category="{{ product.category }}"
+                            data-workshop="{{ product.workshop or 0 }}"
+                            data-paddock="{{ product.paddock or 0 }}"
+                            data-total="{{ product.total or (product.workshop|int + product.paddock|int) }}"
+                        >
                             {{ product.product_name }} ({{ product.item_code }})
                         </option>
                         {% endfor %}
                     </select>
+
+                    <div id="current-count" class="item-counter" aria-live="polite">
+                    </div>
                 </label>
 
                 <div class="quantity-row">
@@ -104,11 +121,25 @@
                         <select id="move-product" name="item_code" required>
                             <option value="">Select product</option>
                             {% for product in products %}
-                            <option value="{{ product.item_code }}" data-category="{{ product.category }}">
+                            <option
+                                value="{{ product.item_code }}"
+                                data-category="{{ product.category }}"
+                                data-workshop="{{ product.workshop or 0 }}"
+                                data-paddock="{{ product.paddock or 0 }}"
+                                data-total="{{ product.total or (product.workshop|int + product.paddock|int) }}"
+                            >
                                 {{ product.product_name }} ({{ product.item_code }})
+                                {% set w = product.workshop %}
+                                {% set p = product.paddock %}
+                                {% if w or p %}
+                                    [{% if w %}W:{{ w }}{% endif %}{% if w and p %} | {% endif %}{% if p %}P:{{ p }}{% endif %}]
+                                {% endif %}
                             </option>
                             {% endfor %}
                         </select>
+
+                        <div id="move-current-count" class="item-counter" aria-live="polite">
+                        </div>
                     </label>
 
                 <label>
@@ -156,6 +187,21 @@
         const selectedItemCode = "{{ selected_item_code or '' }}";
         const toast = document.getElementById("toast");
         const updateButton = document.getElementById("update-action-button");
+        const currentCountEl = document.getElementById("current-count");
+        const moveCountEl = document.getElementById("move-current-count");
+
+        function updateCountForSelect(selectEl, targetEl) {
+            if (!selectEl || !targetEl) return;
+            const opt = selectEl.selectedOptions[0];
+            if (!opt || !opt.value) {
+                targetEl.textContent = "";
+                return;
+            }
+            const w = Number(opt.dataset.workshop || 0);
+            const p = Number(opt.dataset.paddock || 0);
+            const t = Number(opt.dataset.total || (w + p));
+            targetEl.innerHTML = `In stock: <strong>${t}</strong><small> (Workshop: ${w} | Paddock: ${p})</small>`;
+        }
 
         function filterProducts() {
             const selectedCategory = categorySelect.value;
@@ -166,6 +212,7 @@
             if (!productSelect.value || productSelect.selectedOptions[0].hidden) {
                 productSelect.value = "";
             }
+            updateCountForSelect(productSelect, currentCountEl);
         }
 
         function filterMoveProducts() {
@@ -177,7 +224,22 @@
             if (!moveProductSelect.value || moveProductSelect.selectedOptions[0].hidden) {
                 moveProductSelect.value = "";
             }
+            updateCountForSelect(moveProductSelect, moveCountEl);
         }
+
+        productSelect.addEventListener("change", () => updateCountForSelect(productSelect, currentCountEl));
+        moveProductSelect.addEventListener("change", () => updateCountForSelect(moveProductSelect, moveCountEl));
+
+        categorySelect.addEventListener("change", filterProducts);
+        moveCategorySelect.addEventListener("change", filterMoveProducts);
+
+        directionRadios.forEach(radio => radio.addEventListener("change", updateOrderLabel));
+        quantityButtons.forEach(button => {
+            button.addEventListener("click", () => {
+                const step = Number(button.dataset.step);
+                quantityInput.value = Math.max(1, Number(quantityInput.value || 1) + step);
+            });
+        });
 
         function setSelectedItem() {
             if (!selectedItemCode) return;
@@ -216,18 +278,10 @@
             }
         }
 
-        categorySelect.addEventListener("change", filterProducts);
-        moveCategorySelect.addEventListener("change", filterMoveProducts);
-        directionRadios.forEach(radio => radio.addEventListener("change", updateOrderLabel));
-        quantityButtons.forEach(button => {
-            button.addEventListener("click", () => {
-                const step = Number(button.dataset.step);
-                quantityInput.value = Math.max(1, Number(quantityInput.value || 1) + step);
-            });
-        });
-
         setSelectedItem();
         updateOrderLabel();
+        updateCountForSelect(productSelect, currentCountEl);
+        updateCountForSelect(moveProductSelect, moveCountEl);
 
         if (toast && toast.textContent.trim()) {
             toast.classList.add("toast-visible");
