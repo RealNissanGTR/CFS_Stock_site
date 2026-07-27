@@ -28,6 +28,15 @@
         </section>
 
         <section class="section-block">
+            <div style="margin-bottom: 1rem;">
+                <input 
+                    type="text" 
+                    id="search-input" 
+                    placeholder="Search by product name, category, or item code..." 
+                    style="width: 100%; padding: 0.75rem; border: 1px solid rgba(255,255,255,0.2); border-radius: 0.5rem; background: rgba(255,255,255,0.05); color: white;"
+                >
+            </div>
+
             <div class="table-wrap">
                 <table>
                     <thead>
@@ -41,9 +50,9 @@
                             <th>Total</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="products-table">
                         {% for product in products %}
-                        <tr>
+                        <tr class="product-row" data-category="{{ product.category }}" data-item-code="{{ product.item_code }}" data-product-name="{{ product.product_name }}">
                             <td>{{ product.category }}</td>
                             <td><a href="/home?item_code={{ product.item_code }}">{{ product.item_code }}</a></td>
                             <td><a href="/home?item_code={{ product.item_code }}">{{ product.product_name }}</a></td>
@@ -58,5 +67,26 @@
             </div>
         </section>
     </main>
+
+    <script>
+        const searchInput = document.getElementById("search-input");
+        const productRows = document.querySelectorAll(".product-row");
+
+        searchInput.addEventListener("input", () => {
+            const query = searchInput.value.toLowerCase().trim();
+
+            productRows.forEach(row => {
+                const category = row.dataset.category.toLowerCase();
+                const itemCode = row.dataset.itemCode.toLowerCase();
+                const productName = row.dataset.productName.toLowerCase();
+
+                const matches = category.includes(query) || 
+                               itemCode.includes(query) || 
+                               productName.includes(query);
+
+                row.style.display = matches ? "" : "none";
+            });
+        });
+    </script>
 </body>
 </html>
