@@ -82,24 +82,34 @@
                     <input type="text" name="comments" placeholder="Optional comments">
                 </label>
 
-                <button type="submit">Confirm update</button>
+                <button type="submit" id="update-action-button" class="btn-action btn-add">Confirm add</button>
             </form>
         </section>
 
         <section class="section-block">
             <h2>Move stock between locations</h2>
             <form class="form-grid" method="post" action="/inventory/move">
-                <label>
-                    Product
-                    <select id="move-product" name="item_code" required>
-                        <option value="">Select product</option>
-                        {% for product in products %}
-                        <option value="{{ product.item_code }}" data-category="{{ product.category }}">
-                            {{ product.product_name }} ({{ product.item_code }})
-                        </option>
-                        {% endfor %}
-                    </select>
-                </label>
+                    <label>
+                        Category
+                        <select id="move-category" name="category" required>
+                            <option value="">Select category</option>
+                            {% for category in categories %}
+                            <option value="{{ category }}">{{ category }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+
+                    <label>
+                        Product
+                        <select id="move-product" name="item_code" required>
+                            <option value="">Select product</option>
+                            {% for product in products %}
+                            <option value="{{ product.item_code }}" data-category="{{ product.category }}">
+                                {{ product.product_name }} ({{ product.item_code }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </label>
 
                 <label>
                     From
@@ -137,6 +147,7 @@
     <script>
         const categorySelect = document.getElementById("stock-category");
         const productSelect = document.getElementById("stock-product");
+        const moveCategorySelect = document.getElementById("move-category");
         const moveProductSelect = document.getElementById("move-product");
         const orderCodeLabel = document.getElementById("order-code-label");
         const directionRadios = document.querySelectorAll("input[name='direction']");
@@ -144,6 +155,7 @@
         const quantityButtons = document.querySelectorAll(".quantity-step");
         const selectedItemCode = "{{ selected_item_code or '' }}";
         const toast = document.getElementById("toast");
+        const updateButton = document.getElementById("update-action-button");
 
         function filterProducts() {
             const selectedCategory = categorySelect.value;
@@ -153,6 +165,17 @@
             }
             if (!productSelect.value || productSelect.selectedOptions[0].hidden) {
                 productSelect.value = "";
+            }
+        }
+
+        function filterMoveProducts() {
+            const selectedCategory = moveCategorySelect.value;
+            for (const option of moveProductSelect.options) {
+                const optionCategory = option.dataset.category || "";
+                option.hidden = option.value && optionCategory !== selectedCategory;
+            }
+            if (!moveProductSelect.value || moveProductSelect.selectedOptions[0].hidden) {
+                moveProductSelect.value = "";
             }
         }
 
@@ -168,6 +191,8 @@
             }
             for (const option of moveProductSelect.options) {
                 if (option.value === selectedItemCode) {
+                    moveCategorySelect.value = option.dataset.category || "";
+                    filterMoveProducts();
                     option.selected = true;
                     break;
                 }
@@ -179,9 +204,20 @@
             orderCodeLabel.innerHTML = selectedDirection === "add"
                 ? 'Work order code <input type="text" name="order_code" required>'
                 : 'Sales order code <input type="text" name="order_code" required>';
+
+            if (selectedDirection === "add") {
+                updateButton.textContent = "Confirm add";
+                updateButton.classList.remove("btn-remove");
+                updateButton.classList.add("btn-add");
+            } else {
+                updateButton.textContent = "Confirm remove";
+                updateButton.classList.remove("btn-add");
+                updateButton.classList.add("btn-remove");
+            }
         }
 
         categorySelect.addEventListener("change", filterProducts);
+        moveCategorySelect.addEventListener("change", filterMoveProducts);
         directionRadios.forEach(radio => radio.addEventListener("change", updateOrderLabel));
         quantityButtons.forEach(button => {
             button.addEventListener("click", () => {

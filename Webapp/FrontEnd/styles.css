@@ -187,11 +187,14 @@ footer {
 }
 
 .quantity-step {
-    width: 3rem;
-    height: 3rem;
-    border-radius: 12px;
-    background: rgba(255,255,255,0.08);
+    width: 3.25rem;
+    height: 3.25rem;
+    font-size: 1.3rem;
+    background: #ffffff11;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.18);
 }
+
 .direction-row {
     display: flex;
     gap: 1rem;
@@ -223,4 +226,47 @@ footer {
 .toast-visible {
     opacity: 1;
     transform: translateY(0);
+}
+
+.btn-action {
+    border: none;
+    border-radius: 0.85rem;
+    padding: 0.95rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.btn-primary {
+    background: #2cc36b;
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background: #24a85d;
+    transform: translateY(-1px);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-add {
+    background: #2cc36b;
+    color: #ffffff;
+}
+
+.btn-remove {
+    background: #d2e14d;
+    color: #ffffff;
+}
+
+.btn-add:hover {
+    background: #24a85d;
+}
+
+.btn-remove:hover {
+    background: #cac70a;
 }
