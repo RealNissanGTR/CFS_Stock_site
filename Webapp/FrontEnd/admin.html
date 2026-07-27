@@ -5,6 +5,37 @@
     <title>Admin Panel - CFS Stock</title>
     <link rel="stylesheet" href="/static/styles.css">
     <link rel="icon" type="image/png" href="/static/img/cfs_logo.png">
+    <style>
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+        .toggle-button {
+            border: none;
+            border-radius: 999px;
+            padding: 0.75rem 1rem;
+            background: rgba(255,255,255,0.08);
+            color: #fff;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.2s ease;
+        }
+        .toggle-button:hover {
+            transform: translateY(-1px);
+            background: rgba(255,255,255,0.12);
+        }
+        #logs-panel {
+            overflow: hidden;
+            max-height: 2500px;
+            opacity: 1;
+            transition: max-height 0.35s ease, opacity 0.25s ease;
+        }
+        #logs-panel.collapsed {
+            max-height: 0;
+            opacity: 0;
+        }
+    </style>
 </head>
 <body>
     <main class="page-shell">
@@ -122,40 +153,45 @@
             </section>
 
             <section class="section-block">
-                <h2>Activity logs</h2>
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Time</th>
-                                <th>Action</th>
-                                <th>Item</th>
-                                <th>Category</th>
-                                <th>Qty</th>
-                                <th>Location</th>
-                                <th>User</th>
-                                <th>Work order</th>
-                                <th>Purchase order</th>
-                                <th>Comments</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for log in logs %}
-                            <tr>
-                                <td>{{ log.timestamp }}</td>
-                                <td>{{ log.action }}</td>
-                                <td>{{ log.stock_name }}</td>
-                                <td>{{ log.category or "" }}</td>
-                                <td>{{ log.quantity }}</td>
-                                <td>{{ log.location }}</td>
-                                <td>{{ log.performed_by or "" }}</td>
-                                <td>{{ log.work_order or "" }}</td>
-                                <td>{{ log.purchase_order or "" }}</td>
-                                <td>{{ log.comments or "" }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                <div class="section-header">
+                    <h2>Activity logs</h2>
+                    <button type="button" id="toggle-logs" class="toggle-button">Hide logs</button>
+                </div>
+                <div id="logs-panel">
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Action</th>
+                                    <th>Item</th>
+                                    <th>Category</th>
+                                    <th>Qty</th>
+                                    <th>Location</th>
+                                    <th>User</th>
+                                    <th>Work order</th>
+                                    <th>Purchase order</th>
+                                    <th>Comments</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in logs %}
+                                <tr>
+                                    <td>{{ log.timestamp }}</td>
+                                    <td>{{ log.action }}</td>
+                                    <td>{{ log.stock_name }}</td>
+                                    <td>{{ log.category or "" }}</td>
+                                    <td>{{ log.quantity }}</td>
+                                    <td>{{ log.location }}</td>
+                                    <td>{{ log.performed_by or "" }}</td>
+                                    <td>{{ log.work_order or "" }}</td>
+                                    <td>{{ log.purchase_order or "" }}</td>
+                                    <td>{{ log.comments or "" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
@@ -167,5 +203,15 @@
             </section>
         </div>
     </main>
+
+    <script>
+        const toggleLogs = document.getElementById("toggle-logs");
+        const logsPanel = document.getElementById("logs-panel");
+
+        toggleLogs.addEventListener("click", () => {
+            const hidden = logsPanel.classList.toggle("collapsed");
+            toggleLogs.textContent = hidden ? "Show logs" : "Hide logs";
+        });
+    </script>
 </body>
 </html>

@@ -71,8 +71,15 @@
                         {% endfor %}
                     </select>
 
-                    <div id="current-count" class="item-counter" aria-live="polite">
-                    </div>
+                    <div id="current-count" class="item-counter" aria-live="polite"></div>
+                </label>
+
+                <label>
+                    Location
+                    <select name="location" required>
+                        <option value="Workshop">Workshop</option>
+                        <option value="Paddock">Paddock</option>
+                    </select>
                 </label>
 
                 <div class="quantity-row">

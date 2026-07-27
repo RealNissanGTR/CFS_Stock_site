@@ -366,7 +366,7 @@ def inventory_add(
         comments=comments.strip() or None,
         user_is_admin=user.is_admin,
     )
-    redirect_path = "/dashboard" if user.is_admin else "/home"
+    redirect_path = "/home"
     message = "Inventory added successfully." if success else "Unable to add inventory."
     return RedirectResponse(url=f"{redirect_path}?message={message}", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -396,7 +396,7 @@ def inventory_remove(
         purchase_order=purchase_order.strip(),
         comments=comments.strip() or None,
     )
-    redirect_path = "/dashboard" if user.is_admin else "/home"
+    redirect_path = "/home"
     message = "Inventory removed successfully." if success else "Unable to remove inventory."
     return RedirectResponse(url=f"{redirect_path}?message={message}", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -478,43 +478,44 @@ def admin_delete_user(request: Request, user_id: int):
 @app.post("/inventory/change")
 def inventory_change(
     request: Request,
-    category: str = Form(...),
     item_code: str = Form(...),
+    location: str = Form(...),
     quantity: int = Form(...),
     direction: str = Form(...),
     order_code: str = Form(...),
     comments: str = Form(""),
+    category: str = Form(""),
 ):
     user = require_login(request)
-
-    if quantity <= 0 or not order_code.strip():
-        return RedirectResponse(url="/home?message=Please enter a valid quantity and order code.", status_code=status.HTTP_303_SEE_OTHER)
+    item_code = item_code.strip()
+    location = location.strip()
 
     if direction == "add":
         success = add_inventory_item(
-            item_code=item_code.strip(),
+            item_code=item_code,
             quantity=quantity,
-            location="Workshop",
+            location=location,
             category=category.strip() or None,
             performed_by=user.username,
             work_order=order_code.strip(),
             comments=comments.strip() or None,
-            user_is_admin=False,
+            user_is_admin=user.is_admin,
         )
-        message = "Stock added successfully." if success else "Unable to add stock."
+        message = "Inventory added successfully." if success else "Unable to add inventory."
     else:
         success = remove_inventory_item(
-            item_code=item_code.strip(),
+            item_code=item_code,
             quantity=quantity,
-            location="Workshop",
+            location=location,
             category=category.strip() or None,
             performed_by=user.username,
             purchase_order=order_code.strip(),
             comments=comments.strip() or None,
         )
-        message = "Stock removed successfully." if success else "Unable to remove stock."
+        message = "Inventory removed successfully." if success else "Unable to remove inventory."
 
-    return RedirectResponse(url=f"/home?message={message}", status_code=status.HTTP_303_SEE_OTHER)
+    redirect_path = "/home"
+    return RedirectResponse(url=f"{redirect_path}?message={message}", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.post("/inventory/move")
