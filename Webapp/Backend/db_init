@@ -1,0 +1,28 @@
+from sqlalchemy import Column, Integer, String, Boolean, create_engine, UniqueConstraint
+from sqlalchemy.orm import declarative_base, sessionmaker, Session
+from typing import Optional
+import os
+import hashlib
+import binascii
+import secrets
+
+Base = declarative_base()
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True, nullable=False)
+    password_hash = Column(String, nullable=False)
+    is_admin = Column(Boolean, default=False)
+
+class Stock(Base):
+    __tablename__ = "Stock"
+    stock_name = Column(String, primary_key=True, index=True)
+    stock_count = Column(Integer, nullable=False)
+    location = Column(String, nullable=False)
+
+class Logs(Base):
+    __tablename__ = "Logs"
+    id = Column(Integer, primary_key=True, index=True)
+    action = Column(String, nullable=False)
+    timestamp = Column(String, nullable=False)
