@@ -14,6 +14,7 @@
             </div>
             <nav class="nav-links">
                 <a href="/home">Home</a>
+                <a href="/overview">Overview</a>
                 {% if user.is_admin %}
                 <a href="/admin">Admin panel</a>
                 {% endif %}
@@ -28,63 +29,116 @@
         {% endif %}
 
         <section class="hero">
-            <h2>Current stock overview</h2>
-            <p>View workshop and paddock stock levels from this home page.</p>
+            <h2>Quick stock edit</h2>
+            <p>Select the category and product, then press + or - to adjust stock. Add order code for inbound stock and sales order code for removals.</p>
         </section>
 
-        <div class="section-group">
-            <section class="section-block">
-                <h2>Current stock</h2>
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Category</th>
-                                <th>Item</th>
-                                <th>Count</th>
-                                <th>Location</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for stock in stocks %}
-                            <tr>
-                                <td>{{ stock.category or "Unassigned" }}</td>
-                                <td>{{ stock.stock_name }}</td>
-                                <td>{{ stock.stock_count }}</td>
-                                <td>{{ stock.location }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+        <section class="section-block">
+            <form class="form-grid" method="post" action="/inventory/change">
+                <label>
+                    Category
+                    <select id="stock-category" name="category" required>
+                        <option value="">Select category</option>
+                        {% for category in categories %}
+                        <option value="{{ category }}">{{ category }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label>
+                    Product
+                    <select id="stock-product" name="item_code" required>
+                        <option value="">Select product</option>
+                        {% for product in products %}
+                        <option value="{{ product.item_code }}" data-category="{{ product.category }}">
+                            {{ product.product_name }} ({{ product.item_code }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <div class="quantity-row">
+                    <button type="button" class="quantity-step" data-step="-1">-</button>
+                    <label>
+                        Quantity
+                        <input id="stock-quantity" type="number" name="quantity" value="1" min="1" required>
+                    </label>
+                    <button type="button" class="quantity-step" data-step="1">+</button>
                 </div>
-            </section>
 
-            <section class="section-block">
-                <h2>Add inventory</h2>
-                <form class="form-grid" method="post" action="/inventory/add">
-                    <label>Category <input type="text" name="category"></label>
-                    <label>Item name <input type="text" name="stock_name" required></label>
-                    <label>Quantity <input type="number" name="quantity" min="1" required></label>
-                    <label>Location <input type="text" name="location" value="Workshop" required></label>
-                    <label>Work Order <input type="text" name="work_order" required></label>
-                    <label>Comments <input type="text" name="comments"></label>
-                    <button type="submit">Add inventory</button>
-                </form>
-            </section>
+                <div class="direction-row">
+                    <label><input type="radio" name="direction" value="add" checked> Add stock</label>
+                    <label><input type="radio" name="direction" value="remove"> Remove stock</label>
+                </div>
 
-            <section class="section-block">
-                <h2>Remove inventory</h2>
-                <form class="form-grid" method="post" action="/inventory/remove">
-                    <label>Category <input type="text" name="category"></label>
-                    <label>Item name <input type="text" name="stock_name" required></label>
-                    <label>Quantity <input type="number" name="quantity" min="1" required></label>
-                    <label>Location <input type="text" name="location" value="Workshop" required></label>
-                    <label>Purchase Order <input type="text" name="purchase_order" required></label>
-                    <label>Comments <input type="text" name="comments"></label>
-                    <button type="submit">Remove inventory</button>
-                </form>
-            </section>
-        </div>
+                <label id="order-code-label">
+                    Work order code
+                    <input type="text" name="order_code" required>
+                </label>
+
+                <label>
+                    Comments
+                    <input type="text" name="comments" placeholder="Optional comments">
+                </label>
+
+                <button type="submit">Confirm update</button>
+            </form>
+        </section>
     </main>
+
+    <script>
+        const categorySelect = document.getElementById("stock-category");
+        const productSelect = document.getElementById("stock-product");
+        const orderCodeLabel = document.getElementById("order-code-label");
+        const directionRadios = document.querySelectorAll("input[name='direction']");
+        const quantityInput = document.getElementById("stock-quantity");
+        const quantityButtons = document.querySelectorAll(".quantity-step");
+        const selectedItemCode = "{{ selected_item_code or '' }}";
+
+        function filterProducts() {
+            const selectedCategory = categorySelect.value;
+            for (const option of productSelect.options) {
+                const optionCategory = option.dataset.category || "";
+                option.hidden = option.value && optionCategory !== selectedCategory;
+            }
+            if (!productSelect.value || productSelect.selectedOptions[0].hidden) {
+                productSelect.value = "";
+            }
+        }
+
+        function setSelectedItem() {
+            if (!selectedItemCode) {
+                return;
+            }
+
+            for (const option of productSelect.options) {
+                if (option.value === selectedItemCode) {
+                    categorySelect.value = option.dataset.category || "";
+                    filterProducts();
+                    option.selected = true;
+                    break;
+                }
+            }
+        }
+
+        function updateOrderLabel() {
+            const selectedDirection = document.querySelector("input[name='direction']:checked").value;
+            orderCodeLabel.innerHTML = selectedDirection === "add"
+                ? 'Work order code <input type="text" name="order_code" required>'
+                : 'Sales order code <input type="text" name="order_code" required>';
+        }
+
+        categorySelect.addEventListener("change", filterProducts);
+        directionRadios.forEach(radio => radio.addEventListener("change", updateOrderLabel));
+        quantityButtons.forEach(button => {
+            button.addEventListener("click", () => {
+                const step = Number(button.dataset.step);
+                quantityInput.value = Math.max(1, Number(quantityInput.value || 1) + step);
+            });
+        });
+
+        setSelectedItem();
+        updateOrderLabel();
+    </script>
 </body>
 </html>

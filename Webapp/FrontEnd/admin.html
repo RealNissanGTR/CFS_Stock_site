@@ -92,7 +92,8 @@
             <section class="section-block">
                 <h2>Stock management</h2>
                 <form class="form-grid" method="post" action="/admin/create_stock">
-                    <label>Item name <input type="text" name="stock_name" required></label>
+                    <label>Item code <input type="text" name="item_code" required></label>
+                    <label>Product name <input type="text" name="product_name" required></label>
                     <label>Category <input type="text" name="category"></label>
                     <label>Quantity <input type="number" name="quantity" min="0" required></label>
                     <label>Location <input type="text" name="location" value="Workshop" required></label>
@@ -103,9 +104,8 @@
                 <h3 style="margin-top: 1rem;">Delete stock item</h3>
                 <form class="form-grid" method="post" action="/admin/delete_stock"
                       onsubmit="return confirm('Delete this stock item? This cannot be undone.');">
-                    <label>Item name <input type="text" name="stock_name" required></label>
+                    <label>Item code <input type="text" name="item_code" required></label>
                     <label>Location <input type="text" name="location" value="Workshop" required></label>
-                    <label>Comments <input type="text" name="comments"></label>
                     <button type="submit">Delete stock item</button>
                 </form>
             </section>

@@ -24,12 +24,13 @@ class Stock(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     category = Column(String, nullable=True, index=True)
-    stock_name = Column(String, nullable=False, index=True)
+    item_code = Column(String, nullable=False, index=True)
+    product_name = Column(String, nullable=False, index=True)
     stock_count = Column(Integer, nullable=False, default=0)
     location = Column(String, nullable=False, index=True)
 
     __table_args__ = (
-        UniqueConstraint("stock_name", "location", name="uix_stock_location"),
+        UniqueConstraint("item_code", "location", name="uix_item_code_location"),
     )
 
 class Logs(Base):
@@ -111,7 +112,8 @@ def _log_inventory_action(
     session.add(log)
 
 def create_stock_item(
-    stock_name: str,
+    item_code: str,
+    product_name: str,
     quantity: int,
     location: str = "Workshop",
     category: Optional[str] = None,
@@ -119,38 +121,39 @@ def create_stock_item(
     created_by_admin: bool = False,
     comments: Optional[str] = None,
 ) -> bool:
-    if not created_by_admin or quantity < 0:
+    if not created_by_admin or quantity < 0 or not item_code or not product_name:
         return False
 
-    init_db()
     with SessionLocal() as db:
-        existing = db.query(Stock).filter_by(stock_name=stock_name, location=location).first()
+        existing = db.query(Stock).filter_by(item_code=item_code, location=location).first()
         if existing:
             return False
 
         stock = Stock(
-            stock_name=stock_name,
+            item_code=item_code,
+            product_name=product_name,
             category=category,
             stock_count=quantity,
             location=location,
         )
         db.add(stock)
-
         _log_inventory_action(
             session=db,
             action="create",
-            stock_name=stock_name,
+            stock_name=product_name,
             category=category,
             quantity=quantity,
             location=location,
             performed_by=performed_by,
+            work_order=None,
+            purchase_order=None,
             comments=comments,
         )
         db.commit()
         return True
 
 def delete_stock_item(
-    stock_name: str,
+    item_code: str,
     location: str = "Workshop",
     performed_by: Optional[str] = None,
     deleted_by_admin: bool = False,
@@ -159,16 +162,15 @@ def delete_stock_item(
     if not deleted_by_admin:
         return False
 
-    init_db()
     with SessionLocal() as db:
-        stock = db.query(Stock).filter_by(stock_name=stock_name, location=location).first()
+        stock = db.query(Stock).filter_by(item_code=item_code, location=location).first()
         if stock is None:
             return False
 
         _log_inventory_action(
             session=db,
             action="delete",
-            stock_name=stock_name,
+            stock_name=stock.product_name,
             category=stock.category,
             quantity=stock.stock_count,
             location=location,
@@ -180,7 +182,7 @@ def delete_stock_item(
         return True
 
 def add_inventory_item(
-    stock_name: str,
+    item_code: str,
     quantity: int,
     location: str = "Workshop",
     category: Optional[str] = None,
@@ -192,9 +194,8 @@ def add_inventory_item(
     if quantity <= 0 or not work_order:
         return False
 
-    init_db()
     with SessionLocal() as db:
-        stock = db.query(Stock).filter_by(stock_name=stock_name, location=location).first()
+        stock = db.query(Stock).filter_by(item_code=item_code, location=location).first()
         if stock is None:
             return False
 
@@ -202,7 +203,7 @@ def add_inventory_item(
         _log_inventory_action(
             session=db,
             action="add",
-            stock_name=stock_name,
+            stock_name=stock.product_name,
             category=category or stock.category,
             quantity=quantity,
             location=location,
@@ -214,7 +215,7 @@ def add_inventory_item(
         return True
 
 def remove_inventory_item(
-    stock_name: str,
+    item_code: str,
     quantity: int,
     location: str = "Workshop",
     category: Optional[str] = None,
@@ -225,9 +226,8 @@ def remove_inventory_item(
     if quantity <= 0 or not purchase_order:
         return False
 
-    init_db()
     with SessionLocal() as db:
-        stock = db.query(Stock).filter_by(stock_name=stock_name, location=location).first()
+        stock = db.query(Stock).filter_by(item_code=item_code, location=location).first()
         if stock is None or stock.stock_count < quantity:
             return False
 
@@ -235,7 +235,7 @@ def remove_inventory_item(
         _log_inventory_action(
             session=db,
             action="remove",
-            stock_name=stock_name,
+            stock_name=stock.product_name,
             category=category or stock.category,
             quantity=quantity,
             location=location,

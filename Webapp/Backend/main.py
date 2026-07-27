@@ -3,7 +3,6 @@ import hmac
 import os
 from pathlib import Path
 from typing import Optional
-
 from fastapi import FastAPI, Form, Request, status, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -27,13 +26,11 @@ from db.db_init import (
 )
 
 BASE_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = BASE_DIR.parent
-TEMPLATE_DIR = PROJECT_ROOT / "FrontEnd"
-STATIC_DIR = PROJECT_ROOT / "FrontEnd"
+FRONTEND_DIR = BASE_DIR.parent / "FrontEnd"
 
 app = FastAPI(title="CFS Stock")
-app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
+app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
+templates = Jinja2Templates(directory=str(FRONTEND_DIR))
 
 SECRET_KEY = os.getenv("SECRET_KEY", "change-this-secret")
 COOKIE_NAME = "cfs_auth"
@@ -82,7 +79,7 @@ def get_current_user(request: Request) -> Optional[User]:
         return db.query(User).filter_by(username=username).first()
 
 
-def require_login(request: Request) -> User:
+def require_login(request: Request):
     user = get_current_user(request)
     if user is None:
         raise HTTPException(
@@ -92,7 +89,7 @@ def require_login(request: Request) -> User:
     return user
 
 
-def require_admin(request: Request) -> User:
+def require_admin(request: Request):
     user = require_login(request)
     if not user.is_admin:
         raise HTTPException(
@@ -142,11 +139,47 @@ def logout():
     return response
 
 
+@app.get("/overview", response_class=HTMLResponse)
+def overview(request: Request):
+    user = require_login(request)
+    with SessionLocal() as db:
+        stocks = db.query(Stock).order_by(
+            Stock.category,
+            Stock.product_name,
+            Stock.item_code,
+            Stock.location,
+        ).all()
+
+    return templates.TemplateResponse(
+        "overview.html",
+        {
+            "request": request,
+            "user": user,
+            "stocks": stocks,
+        },
+    )
+
+
 @app.get("/home", response_class=HTMLResponse)
 def home(request: Request):
     user = require_login(request)
+
     with SessionLocal() as db:
-        stocks = db.query(Stock).order_by(Stock.category, Stock.stock_name, Stock.location).all()
+        stocks = db.query(Stock).order_by(
+            Stock.category,
+            Stock.product_name,
+            Stock.item_code,
+            Stock.location,
+        ).all()
+        categories = sorted({stock.category or "Unassigned" for stock in stocks})
+        products = [
+            {
+                "item_code": stock.item_code,
+                "product_name": stock.product_name,
+                "category": stock.category or "Unassigned",
+            }
+            for stock in stocks
+        ]
 
     return templates.TemplateResponse(
         "home.html",
@@ -154,6 +187,9 @@ def home(request: Request):
             "request": request,
             "user": user,
             "stocks": stocks,
+            "categories": categories,
+            "products": products,
+            "selected_item_code": request.query_params.get("item_code", ""),
             "message": request.query_params.get("message", ""),
         },
     )
@@ -168,7 +204,12 @@ def dashboard(request: Request):
 def admin_panel(request: Request):
     user = require_admin(request)
     with SessionLocal() as db:
-        stocks = db.query(Stock).order_by(Stock.category, Stock.stock_name, Stock.location).all()
+        stocks = db.query(Stock).order_by(
+            Stock.category,
+            Stock.product_name,
+            Stock.item_code,
+            Stock.location,
+        ).all()
         users = db.query(User).order_by(User.username).all()
         logs = db.query(Logs).order_by(Logs.timestamp.desc()).limit(200).all()
 
@@ -185,10 +226,78 @@ def admin_panel(request: Request):
     )
 
 
+def _normalize_item_fields(
+    item_code: Optional[str],
+    product_name: Optional[str],
+    stock_name: Optional[str] = None,
+):
+    normalized_item_code = (item_code or stock_name or "").strip()
+    normalized_product_name = (product_name or stock_name or "").strip()
+    return normalized_item_code, normalized_product_name
+
+
+def _normalize_item_code(item_code: Optional[str], stock_name: Optional[str] = None):
+    return (item_code or stock_name or "").strip()
+
+
+@app.post("/admin/create_stock")
+def admin_create_stock(
+    request: Request,
+    item_code: Optional[str] = Form(None),
+    product_name: Optional[str] = Form(None),
+    stock_name: Optional[str] = Form(None),
+    quantity: int = Form(...),
+    location: str = Form("Workshop"),
+    category: str = Form(""),
+    comments: str = Form(""),
+):
+    require_admin(request)
+    item_code, product_name = _normalize_item_fields(item_code, product_name, stock_name)
+
+    if not item_code or not product_name:
+        return RedirectResponse(url="/admin?message=Item code and product name are required.", status_code=status.HTTP_303_SEE_OTHER)
+
+    create_stock_item(
+        item_code=item_code,
+        product_name=product_name,
+        quantity=quantity,
+        location=location.strip(),
+        category=category.strip() or None,
+        performed_by="admin",
+        created_by_admin=True,
+        comments=comments.strip() or None,
+    )
+    return RedirectResponse(url="/admin?message=Stock item created.", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/admin/delete_stock")
+def admin_delete_stock(
+    request: Request,
+    item_code: Optional[str] = Form(None),
+    stock_name: Optional[str] = Form(None),
+    location: str = Form("Workshop"),
+    comments: str = Form(""),
+):
+    require_admin(request)
+    item_code = _normalize_item_code(item_code, stock_name)
+    if not item_code:
+        return RedirectResponse(url="/admin?message=Item code is required to delete stock.", status_code=status.HTTP_303_SEE_OTHER)
+
+    delete_stock_item(
+        item_code=item_code,
+        location=location.strip(),
+        performed_by="admin",
+        deleted_by_admin=True,
+        comments=comments.strip() or None,
+    )
+    return RedirectResponse(url="/admin?message=Stock item deleted.", status_code=status.HTTP_303_SEE_OTHER)
+
+
 @app.post("/inventory/add")
 def inventory_add(
     request: Request,
-    stock_name: str = Form(...),
+    item_code: Optional[str] = Form(None),
+    stock_name: Optional[str] = Form(None),
     quantity: int = Form(...),
     location: str = Form("Workshop"),
     work_order: str = Form(...),
@@ -196,8 +305,12 @@ def inventory_add(
     category: str = Form(""),
 ):
     user = require_login(request)
+    item_code = _normalize_item_code(item_code, stock_name)
+    if not item_code:
+        return RedirectResponse(url="/home?message=Item code is required.", status_code=status.HTTP_303_SEE_OTHER)
+
     success = add_inventory_item(
-        stock_name=stock_name.strip(),
+        item_code=item_code,
         quantity=quantity,
         location=location.strip(),
         category=category.strip() or None,
@@ -206,12 +319,16 @@ def inventory_add(
         comments=comments.strip() or None,
         user_is_admin=user.is_admin,
     )
+    redirect_path = "/dashboard" if user.is_admin else "/home"
+    message = "Inventory added successfully." if success else "Unable to add inventory."
+    return RedirectResponse(url=f"{redirect_path}?message={message}", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.post("/inventory/remove")
 def inventory_remove(
     request: Request,
-    stock_name: str = Form(...),
+    item_code: Optional[str] = Form(None),
+    stock_name: Optional[str] = Form(None),
     quantity: int = Form(...),
     location: str = Form("Workshop"),
     purchase_order: str = Form(...),
@@ -219,8 +336,12 @@ def inventory_remove(
     category: str = Form(""),
 ):
     user = require_login(request)
+    item_code = _normalize_item_code(item_code, stock_name)
+    if not item_code:
+        return RedirectResponse(url="/home?message=Item code is required.", status_code=status.HTTP_303_SEE_OTHER)
+
     success = remove_inventory_item(
-        stock_name=stock_name.strip(),
+        item_code=item_code,
         quantity=quantity,
         location=location.strip(),
         category=category.strip() or None,
@@ -228,7 +349,6 @@ def inventory_remove(
         purchase_order=purchase_order.strip(),
         comments=comments.strip() or None,
     )
-
     redirect_path = "/dashboard" if user.is_admin else "/home"
     message = "Inventory removed successfully." if success else "Unable to remove inventory."
     return RedirectResponse(url=f"{redirect_path}?message={message}", status_code=status.HTTP_303_SEE_OTHER)
@@ -258,46 +378,6 @@ def admin_toggle_admin(request: Request, user_id: int):
         if target:
             target.is_admin = not target.is_admin
             db.commit()
-    return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
-
-
-@app.post("/admin/create_stock")
-def admin_create_stock(
-    request: Request,
-    stock_name: str = Form(...),
-    quantity: int = Form(...),
-    location: str = Form("Workshop"),
-    category: str = Form(""),
-    comments: str = Form(""),
-):
-    require_admin(request)
-    create_stock_item(
-        stock_name=stock_name.strip(),
-        quantity=quantity,
-        location=location.strip(),
-        category=category.strip() or None,
-        performed_by="admin",
-        created_by_admin=True,
-        comments=comments.strip() or None,
-    )
-    return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
-
-
-@app.post("/admin/delete_stock")
-def admin_delete_stock(
-    request: Request,
-    stock_name: str = Form(...),
-    location: str = Form("Workshop"),
-    comments: str = Form(""),
-):
-    require_admin(request)
-    delete_stock_item(
-        stock_name=stock_name.strip(),
-        location=location.strip(),
-        performed_by="admin",
-        deleted_by_admin=True,
-        comments=comments.strip() or None,
-    )
     return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
 
 
@@ -346,3 +426,45 @@ def admin_delete_user(request: Request, user_id: int):
     message = "User deleted successfully." if formatted else "Unable to delete user."
 
     return RedirectResponse(url=f"/dashboard?message={message}", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/inventory/change")
+def inventory_change(
+    request: Request,
+    category: str = Form(...),
+    item_code: str = Form(...),
+    quantity: int = Form(...),
+    direction: str = Form(...),
+    order_code: str = Form(...),
+    comments: str = Form(""),
+):
+    user = require_login(request)
+
+    if quantity <= 0 or not order_code.strip():
+        return RedirectResponse(url="/home?message=Please enter a valid quantity and order code.", status_code=status.HTTP_303_SEE_OTHER)
+
+    if direction == "add":
+        success = add_inventory_item(
+            item_code=item_code.strip(),
+            quantity=quantity,
+            location="Workshop",
+            category=category.strip() or None,
+            performed_by=user.username,
+            work_order=order_code.strip(),
+            comments=comments.strip() or None,
+            user_is_admin=False,
+        )
+        message = "Stock added successfully." if success else "Unable to add stock."
+    else:
+        success = remove_inventory_item(
+            item_code=item_code.strip(),
+            quantity=quantity,
+            location="Workshop",
+            category=category.strip() or None,
+            performed_by=user.username,
+            purchase_order=order_code.strip(),
+            comments=comments.strip() or None,
+        )
+        message = "Stock removed successfully." if success else "Unable to remove stock."
+
+    return RedirectResponse(url=f"/home?message={message}", status_code=status.HTTP_303_SEE_OTHER)

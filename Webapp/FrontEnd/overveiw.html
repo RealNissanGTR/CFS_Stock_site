@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Stock Overview - CFS Stock</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <main class="page-shell">
+        <header>
+            <div>
+                <h1>Stock Overview</h1>
+                <p>View every stock item and click one to edit it.</p>
+            </div>
+            <nav class="nav-links">
+                <a href="/home">Home</a>
+                {% if user.is_admin %}
+                <a href="/admin">Admin panel</a>
+                {% endif %}
+                <a href="/logout">Logout</a>
+            </nav>
+        </header>
+
+        <section class="hero">
+            <h2>Complete inventory at a glance</h2>
+            <p>Click any product to open the stock edit page with that item preselected.</p>
+        </section>
+
+        <section class="section-block">
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Item code</th>
+                            <th>Product name</th>
+                            <th>Count</th>
+                            <th>Location</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for stock in stocks %}
+                        <tr>
+                            <td>{{ stock.category or "Unassigned" }}</td>
+                            <td>
+                                <a href="/home?item_code={{ stock.item_code }}">{{ stock.item_code }}</a>
+                            </td>
+                            <td>
+                                <a href="/home?item_code={{ stock.item_code }}">{{ stock.product_name }}</a>
+                            </td>
+                            <td>{{ stock.stock_count }}</td>
+                            <td>{{ stock.location }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
