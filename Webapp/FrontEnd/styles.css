@@ -193,3 +193,24 @@ footer {
     .page-shell { padding: 1rem; }
     header { align-items: flex-start; }
 }
+
+.toast {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    background: rgba(0, 0, 0, 0.88);
+    color: white;
+    padding: 0.9rem 1.2rem;
+    border-radius: 0.85rem;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+.toast-visible {
+    opacity: 1;
+    transform: translateY(0);
+}

@@ -102,8 +102,8 @@ def require_admin(request: Request):
 
 
 @app.get("/", response_class=HTMLResponse)
-def landing(request: Request):
-    return templates.TemplateResponse("landing.html", {"request": request})
+def root(request: Request):
+    return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.get("/login", response_class=HTMLResponse)
@@ -517,3 +517,8 @@ def inventory_move(
     )
     message = "Stock moved successfully." if success else "Unable to move stock."
     return RedirectResponse(url=f"/home?message={message}", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.get("/landing")
+def landing_redirect():
+    return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)

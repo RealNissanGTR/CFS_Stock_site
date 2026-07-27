@@ -131,6 +131,8 @@
         </section>
     </main>
 
+    <div id="toast" class="toast">{{ message }}</div>
+
     <script>
         const categorySelect = document.getElementById("stock-category");
         const productSelect = document.getElementById("stock-product");
@@ -140,6 +142,7 @@
         const quantityInput = document.getElementById("stock-quantity");
         const quantityButtons = document.querySelectorAll(".quantity-step");
         const selectedItemCode = "{{ selected_item_code or '' }}";
+        const toast = document.getElementById("toast");
 
         function filterProducts() {
             const selectedCategory = categorySelect.value;
@@ -188,6 +191,11 @@
 
         setSelectedItem();
         updateOrderLabel();
+
+        if (toast && toast.textContent.trim()) {
+            toast.classList.add("toast-visible");
+            setTimeout(() => toast.classList.remove("toast-visible"), 3500);
+        }
     </script>
 </body>
 </html>

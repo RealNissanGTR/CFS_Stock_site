@@ -97,8 +97,13 @@
                     <label>Product name <input type="text" name="product_name" required></label>
                     <label>Category <input type="text" name="category"></label>
                     <label>Quantity <input type="number" name="quantity" min="0" required></label>
-                    <label>Location <input type="text" name="location" value="Workshop" required></label>
-                    <label>Comments <input type="text" name="comments"></label>
+                    <label>
+                        Location
+                        <select name="location" required>
+                            <option value="Workshop">Workshop</option>
+                            <option value="Paddock">Paddock</option>
+                        </select>
+                    </label>
                     <button type="submit">Create stock item</button>
                 </form>
 
@@ -106,7 +111,13 @@
                 <form class="form-grid" method="post" action="/admin/delete_stock"
                       onsubmit="return confirm('Delete this stock item? This cannot be undone.');">
                     <label>Item code <input type="text" name="item_code" required></label>
-                    <label>Location <input type="text" name="location" value="Workshop" required></label>
+                    <label>
+                        Location
+                        <select name="location" required>
+                            <option value="Workshop">Workshop</option>
+                            <option value="Paddock">Paddock</option>
+                        </select>
+                    </label>
                     <button type="submit">Delete stock item</button>
                 </form>
             </section>
