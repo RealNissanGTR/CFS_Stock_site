@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard - CFS Stock</title>
+</head>
+<body>
+    <header>
+        <h1>Dashboard</h1>
+        <p>Signed in as {{ user.username }}{% if user.is_admin %} (Admin){% endif %}</p>
+        <p>
+            <a href="/">Home</a> |
+            <a href="/logout">Logout</a>
+            {% if user.is_admin %}
+                | <a href="/admin">Admin panel</a>
+            {% endif %}
+        </p>
+    </header>
+
+    {% if message %}
+        <p style="color: green;">{{ message }}</p>
+    {% endif %}
+
+    <section>
+        <h2>Current stock</h2>
+        <table border="1" cellpadding="6" cellspacing="0">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Item</th>
+                    <th>Count</th>
+                    <th>Location</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for stock in stocks %}
+                    <tr>
+                        <td>{{ stock.category or "None" }}</td>
+                        <td>{{ stock.stock_name }}</td>
+                        <td>{{ stock.stock_count }}</td>
+                        <td>{{ stock.location }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <section>
+        <h2>Add inventory</h2>
+        <form method="post" action="/inventory/add">
+            <label>Category <input type="text" name="category"></label><br>
+            <label>Item name <input type="text" name="stock_name" required></label><br>
+            <label>Quantity <input type="number" name="quantity" min="1" required></label><br>
+            <label>Location <input type="text" name="location" value="Workshop" required></label><br>
+            <label>Work Order <input type="text" name="work_order" required></label><br>
+            <label>Comments <input type="text" name="comments"></label><br>
+            <button type="submit">Add inventory</button>
+        </form>
+    </section>
+
+    <section>
+        <h2>Remove inventory</h2>
+        <form method="post" action="/inventory/remove">
+            <label>Category <input type="text" name="category"></label><br>
+            <label>Item name <input type="text" name="stock_name" required></label><br>
+            <label>Quantity <input type="number" name="quantity" min="1" required></label><br>
+            <label>Location <input type="text" name="location" value="Workshop" required></label><br>
+            <label>Purchase Order <input type="text" name="purchase_order" required></label><br>
+            <label>Comments <input type="text" name="comments"></label><br>
+            <button type="submit">Remove inventory</button>
+        </form>
+    </section>
+</body>
+</html>

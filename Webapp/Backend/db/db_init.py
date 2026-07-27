@@ -58,11 +58,14 @@ def hash_password(password: str) -> str:
     return binascii.hexlify(salt + dk).decode("ascii")
 
 def verify_password(password: str, password_hash: str) -> bool:
-    data = binascii.unhexlify(password_hash.encode("ascii"))
-    salt = data[:16]
-    stored_dk = data[16:]
-    new_dk = hashlib.pbkdf2_hmac(HASH_NAME, password.encode("utf-8"), salt, PBKDF2_ITERATIONS)
-    return secrets.compare_digest(new_dk, stored_dk)
+    try:
+        data = binascii.unhexlify(password_hash.encode("ascii"))
+        salt = data[:16]
+        stored_dk = data[16:]
+        new_dk = hashlib.pbkdf2_hmac(HASH_NAME, password.encode("utf-8"), salt, PBKDF2_ITERATIONS)
+        return secrets.compare_digest(new_dk, stored_dk)
+    except Exception:
+        return False
 
 def get_db():
     db = SessionLocal()
@@ -123,8 +126,7 @@ def create_stock_item(
         return False
 
     init_db()
-    db = SessionLocal()
-    try:
+    with SessionLocal() as db:
         existing = db.query(Stock).filter_by(stock_name=stock_name, location=location).first()
         if existing:
             return False
@@ -136,7 +138,6 @@ def create_stock_item(
             location=location,
         )
         db.add(stock)
-
         _log_inventory_action(
             session=db,
             action="create",
@@ -149,11 +150,6 @@ def create_stock_item(
         )
         db.commit()
         return True
-    except Exception:
-        db.rollback()
-        return False
-    finally:
-        db.close()
 
 def delete_stock_item(
     stock_name: str,
@@ -166,8 +162,7 @@ def delete_stock_item(
         return False
 
     init_db()
-    db = SessionLocal()
-    try:
+    with SessionLocal() as db:
         stock = db.query(Stock).filter_by(stock_name=stock_name, location=location).first()
         if stock is None:
             return False
@@ -185,11 +180,6 @@ def delete_stock_item(
         db.delete(stock)
         db.commit()
         return True
-    except Exception:
-        db.rollback()
-        return False
-    finally:
-        db.close()
 
 def add_inventory_item(
     stock_name: str,
@@ -205,27 +195,17 @@ def add_inventory_item(
         return False
 
     init_db()
-    db = SessionLocal()
-    try:
+    with SessionLocal() as db:
         stock = db.query(Stock).filter_by(stock_name=stock_name, location=location).first()
         if stock is None:
-            if not user_is_admin:
-                return False
-            stock = Stock(
-                stock_name=stock_name,
-                category=category,
-                stock_count=quantity,
-                location=location,
-            )
-            db.add(stock)
-        else:
-            stock.stock_count += quantity
+            return False
 
+        stock.stock_count += quantity
         _log_inventory_action(
             session=db,
             action="add",
             stock_name=stock_name,
-            category=category or (stock.category if stock else None),
+            category=category or stock.category,
             quantity=quantity,
             location=location,
             performed_by=performed_by,
@@ -234,11 +214,6 @@ def add_inventory_item(
         )
         db.commit()
         return True
-    except Exception:
-        db.rollback()
-        return False
-    finally:
-        db.close()
 
 def remove_inventory_item(
     stock_name: str,
@@ -253,14 +228,12 @@ def remove_inventory_item(
         return False
 
     init_db()
-    db = SessionLocal()
-    try:
+    with SessionLocal() as db:
         stock = db.query(Stock).filter_by(stock_name=stock_name, location=location).first()
         if stock is None or stock.stock_count < quantity:
             return False
 
         stock.stock_count -= quantity
-
         _log_inventory_action(
             session=db,
             action="remove",
@@ -274,34 +247,20 @@ def remove_inventory_item(
         )
         db.commit()
         return True
-    except Exception:
-        db.rollback()
-        return False
-    finally:
-        db.close()
 
 def add_user(username: str, password: str) -> bool:
     return add_user_full(username, password)
 
 def add_user_full(username: str, password: str, email: Optional[str] = None, is_admin: bool = False) -> bool:
     init_db()
-    pwd_hash = hash_password(password)
-    db: Session = SessionLocal()
-    try:
-        user = User(
-            username=username,
-            password_hash=pwd_hash,
-            email=email,
-            is_admin=is_admin
-        )
+    hashed = hash_password(password)
+    with SessionLocal() as db:
+        if db.query(User).filter_by(username=username).first():
+            return False
+        user = User(username=username, password_hash=hashed, email=email, is_admin=is_admin)
         db.add(user)
         db.commit()
         return True
-    except Exception:
-        db.rollback()
-        return False
-    finally:
-        db.close()
 
 if __name__ == "__main__":
     init_db()
