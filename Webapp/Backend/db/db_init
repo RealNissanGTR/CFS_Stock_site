@@ -33,6 +33,9 @@ engine = create_engine(
     connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 )
 
+HASH_NAME = "sha256"
+PBKDF2_ITERATIONS = 100_000
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def hash_password(password: str) -> str:
@@ -69,3 +72,33 @@ def init_db(default_admin_username: str = "admin", default_admin_password: str =
 
 if __name__ == "__main__":
     init_db()
+
+def add_user(username: str, password: str) -> bool:
+    return add_user_full(username, password)
+
+def add_user_full(username: str, password: str, email: Optional[str] = None, isadmin: bool = False) -> bool:
+    init_db()
+    pwd_hash = _hash_password(password)
+    db: Session = SessionLocal()
+    try:
+        user = User(
+            username=username,
+            password_hash=pwd_hash,
+            email=email,
+            isadmin=isadmin
+        )
+        db.add(user)
+        db.commit()
+        return True
+    except Exception:
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
+def _hash_password(password: str) -> str:
+    salt = secrets.token_bytes(16)
+    dk = hashlib.pbkdf2_hmac(HASH_NAME, password.encode("utf-8"), salt, PBKDF2_ITERATIONS)
+    salt_hex = binascii.hexlify(salt).decode("ascii")
+    dk_hex = binascii.hexlify(dk).decode("ascii")
+    return f"pbkdf2_{HASH_NAME}${PBKDF2_ITERATIONS}${salt_hex}${dk_hex}"
