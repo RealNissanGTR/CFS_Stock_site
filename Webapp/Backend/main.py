@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import os
+from collections import defaultdict
 from pathlib import Path
 from typing import Optional
 from fastapi import FastAPI, Form, Request, status, HTTPException
@@ -20,6 +21,7 @@ from db.db_init import (
     delete_stock_item,
     add_inventory_item,
     remove_inventory_item,
+    move_inventory_item,
     get_user_by_id,
     update_user,
     delete_user,
@@ -150,12 +152,37 @@ def overview(request: Request):
             Stock.location,
         ).all()
 
+    grouped = {}
+    for stock in stocks:
+        key = (stock.item_code, stock.product_name, stock.category or "Unassigned")
+        if key not in grouped:
+            grouped[key] = {
+                "category": stock.category or "Unassigned",
+                "item_code": stock.item_code,
+                "product_name": stock.product_name,
+                "workshop": 0,
+                "paddock": 0,
+                "other": [],
+                "total": 0,
+            }
+
+        count = stock.stock_count or 0
+        location_key = stock.location.strip().lower()
+        if location_key == "workshop":
+            grouped[key]["workshop"] += count
+        elif location_key == "paddock":
+            grouped[key]["paddock"] += count
+        else:
+            grouped[key]["other"].append(f"{stock.location}: {count}")
+
+        grouped[key]["total"] += count
+
     return templates.TemplateResponse(
         "overview.html",
         {
             "request": request,
             "user": user,
-            "stocks": stocks,
+            "products": list(grouped.values()),
         },
     )
 
@@ -467,4 +494,26 @@ def inventory_change(
         )
         message = "Stock removed successfully." if success else "Unable to remove stock."
 
+    return RedirectResponse(url=f"/home?message={message}", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/inventory/move")
+def inventory_move(
+    request: Request,
+    item_code: str = Form(...),
+    quantity: int = Form(...),
+    from_location: str = Form(...),
+    to_location: str = Form(...),
+    comments: str = Form(""),
+):
+    user = require_login(request)
+    success = move_inventory_item(
+        item_code=item_code.strip(),
+        quantity=quantity,
+        from_location=from_location.strip(),
+        to_location=to_location.strip(),
+        performed_by=user.username,
+        comments=comments.strip() or None,
+    )
+    message = "Stock moved successfully." if success else "Unable to move stock."
     return RedirectResponse(url=f"/home?message={message}", status_code=status.HTTP_303_SEE_OTHER)

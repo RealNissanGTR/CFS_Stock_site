@@ -315,3 +315,46 @@ def delete_user(user_id: int, protect_username: Optional[str] = None) -> bool:
         db.delete(user)
         db.commit()
         return True
+
+def move_inventory_item(
+    item_code: str,
+    quantity: int,
+    from_location: str,
+    to_location: str,
+    performed_by: Optional[str] = None,
+    comments: Optional[str] = None,
+) -> bool:
+    if quantity <= 0 or not item_code or from_location == to_location:
+        return False
+
+    with SessionLocal() as db:
+        source = db.query(Stock).filter_by(item_code=item_code, location=from_location).first()
+        if source is None or source.stock_count < quantity:
+            return False
+
+        target = db.query(Stock).filter_by(item_code=item_code, location=to_location).first()
+        if target is None:
+            target = Stock(
+                item_code=item_code,
+                product_name=source.product_name,
+                category=source.category,
+                stock_count=0,
+                location=to_location,
+            )
+            db.add(target)
+
+        source.stock_count -= quantity
+        target.stock_count += quantity
+
+        _log_inventory_action(
+            session=db,
+            action="move",
+            stock_name=source.product_name,
+            category=source.category,
+            quantity=quantity,
+            location=f"{from_location}->{to_location}",
+            performed_by=performed_by,
+            comments=comments or f"Moved from {from_location} to {to_location}",
+        )
+        db.commit()
+        return True

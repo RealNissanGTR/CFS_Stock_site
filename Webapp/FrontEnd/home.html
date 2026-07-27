@@ -84,11 +84,57 @@
                 <button type="submit">Confirm update</button>
             </form>
         </section>
+
+        <section class="section-block">
+            <h2>Move stock between locations</h2>
+            <form class="form-grid" method="post" action="/inventory/move">
+                <label>
+                    Product
+                    <select id="move-product" name="item_code" required>
+                        <option value="">Select product</option>
+                        {% for product in products %}
+                        <option value="{{ product.item_code }}" data-category="{{ product.category }}">
+                            {{ product.product_name }} ({{ product.item_code }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label>
+                    From
+                    <select name="from_location" required>
+                        <option value="Workshop">Workshop</option>
+                        <option value="Paddock">Paddock</option>
+                    </select>
+                </label>
+
+                <label>
+                    To
+                    <select name="to_location" required>
+                        <option value="Paddock">Paddock</option>
+                        <option value="Workshop">Workshop</option>
+                    </select>
+                </label>
+
+                <label>
+                    Quantity
+                    <input type="number" name="quantity" value="1" min="1" required>
+                </label>
+
+                <label>
+                    Comments
+                    <input type="text" name="comments" placeholder="Optional comments">
+                </label>
+
+                <button type="submit">Move stock</button>
+            </form>
+        </section>
     </main>
 
     <script>
         const categorySelect = document.getElementById("stock-category");
         const productSelect = document.getElementById("stock-product");
+        const moveProductSelect = document.getElementById("move-product");
         const orderCodeLabel = document.getElementById("order-code-label");
         const directionRadios = document.querySelectorAll("input[name='direction']");
         const quantityInput = document.getElementById("stock-quantity");
@@ -107,14 +153,17 @@
         }
 
         function setSelectedItem() {
-            if (!selectedItemCode) {
-                return;
-            }
-
+            if (!selectedItemCode) return;
             for (const option of productSelect.options) {
                 if (option.value === selectedItemCode) {
                     categorySelect.value = option.dataset.category || "";
                     filterProducts();
+                    option.selected = true;
+                    break;
+                }
+            }
+            for (const option of moveProductSelect.options) {
+                if (option.value === selectedItemCode) {
                     option.selected = true;
                     break;
                 }
