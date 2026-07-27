@@ -1,5 +1,5 @@
 # CFS Stock — Quick Start 
-This is a small local web app to track stock across Workshop and Paddock. These instructions assume you use Windows and have no prior experience. Follow each step exactly.
+This is a small local web app to track stock across different locations
 
 ---
 
