@@ -1,6 +1,9 @@
 param(
     [string]$BindHost = "0.0.0.0",
-    [int]$Port = 8000
+    [int]$Port = 8000,
+    [switch]$UseHttps,
+    [string]$SslCertFile = "",
+    [string]$SslKeyFile = ""
 )
 
 $backendDir = "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend"
@@ -61,16 +64,36 @@ else {
     $pythonArgs = @("-m", "uvicorn", "main:app", "--host", $BindHost, "--port", $Port.ToString())
 }
 
+$scheme = "http"
+if ($UseHttps) {
+    if ([string]::IsNullOrWhiteSpace($SslCertFile) -or [string]::IsNullOrWhiteSpace($SslKeyFile)) {
+        throw "HTTPS enabled but certificate or key path is missing. Provide -SslCertFile and -SslKeyFile."
+    }
+
+    if (-not (Test-Path $SslCertFile)) {
+        throw "SSL certificate file not found: $SslCertFile"
+    }
+
+    if (-not (Test-Path $SslKeyFile)) {
+        throw "SSL key file not found: $SslKeyFile"
+    }
+
+    $resolvedCert = (Resolve-Path $SslCertFile).Path
+    $resolvedKey = (Resolve-Path $SslKeyFile).Path
+    $pythonArgs += @("--ssl-certfile", $resolvedCert, "--ssl-keyfile", $resolvedKey)
+    $scheme = "https"
+}
+
 while ($true) {
     $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
     $logFile = Join-Path $logDir "uvicorn-$timestamp.log"
     $errFile = Join-Path $logDir "uvicorn-$timestamp.err.log"
 
-    Write-Host ("Starting uvicorn on {0}:{1}" -f $BindHost, $Port)
+    Write-Host ("Starting uvicorn on {0}://{1}:{2}" -f $scheme, $BindHost, $Port)
     Write-Host ("Log file: {0}" -f $logFile)
     if ($lanIps.Count -gt 0) {
         foreach ($ip in $lanIps) {
-            Write-Host ("Try from other devices: http://{0}:{1}" -f $ip, $Port)
+            Write-Host ("Try from other devices: {0}://{1}:{2}" -f $scheme, $ip, $Port)
         }
     }
     else {

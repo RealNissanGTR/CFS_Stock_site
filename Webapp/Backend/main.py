@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import io
+import json
 import os
 from datetime import datetime
 from pathlib import Path
@@ -195,6 +196,7 @@ def overview(request: Request):
 def home(request: Request):
     user = require_login(request)
     flash = get_flash(request)
+    stock_form_state = get_stock_form_state(request)
 
     with SessionLocal() as db:
         stocks = db.query(Stock).order_by(
@@ -230,7 +232,8 @@ def home(request: Request):
         "user": user,
         "categories": categories,
         "products": list(products_map.values()),
-        "selected_item_code": request.query_params.get("item_code", ""),
+        "selected_item_code": request.query_params.get("item_code", "").strip() or stock_form_state.get("item_code", ""),
+        "stock_form_state": stock_form_state,
         "message": flash,
     })
     response.delete_cookie(FLASH_COOKIE)
@@ -450,34 +453,58 @@ def inventory_change(
         user = require_login(request)
         item_code = item_code.strip()
         location = location.strip()
+        direction = direction.strip().lower()
+        order_code = order_code.strip()
+        comments = comments.strip()
+        category = category.strip()
+        stock_form_state = {
+            "category": category,
+            "item_code": item_code,
+            "location": location,
+            "quantity": str(quantity),
+            "direction": direction if direction in {"add", "remove"} else "add",
+            "order_code": order_code,
+            "comments": comments,
+        }
 
-        if not item_code or quantity <= 0 or not order_code.strip():
+        if not item_code or quantity <= 0 or not order_code or direction not in {"add", "remove"}:
             r = RedirectResponse(url="/home", status_code=status.HTTP_303_SEE_OTHER)
-            return set_flash(r, "Invalid input. Please fill all required fields.")
+            set_flash(r, "Invalid input. Please fill all required fields.")
+            return set_stock_form_state(r, stock_form_state)
 
         if direction == "add":
             success = add_inventory_item(
                 item_code=item_code, quantity=quantity, location=location,
-                category=category.strip() or None, performed_by=user.username,
-                work_order=order_code.strip(), comments=comments.strip() or None,
+                category=category or None, performed_by=user.username,
+                work_order=order_code, comments=comments or None,
                 user_is_admin=user.is_admin,
             )
             message = "Inventory added successfully." if success else "Unable to add inventory."
         else:
             success = remove_inventory_item(
                 item_code=item_code, quantity=quantity, location=location,
-                category=category.strip() or None, performed_by=user.username,
-                purchase_order=order_code.strip(), comments=comments.strip() or None,
+                category=category or None, performed_by=user.username,
+                purchase_order=order_code, comments=comments or None,
             )
             message = "Inventory removed successfully." if success else "Unable to remove inventory."
 
         quick_backup()
         r = RedirectResponse(url="/home", status_code=status.HTTP_303_SEE_OTHER)
-        return set_flash(r, message)
+        set_flash(r, message)
+        return set_stock_form_state(r, stock_form_state)
 
     except Exception as e:
         r = RedirectResponse(url="/home", status_code=status.HTTP_303_SEE_OTHER)
-        return set_flash(r, f"Error: {str(e)}")
+        set_flash(r, f"Error: {str(e)}")
+        return set_stock_form_state(r, {
+            "category": category.strip(),
+            "item_code": item_code.strip(),
+            "location": location.strip(),
+            "quantity": str(quantity),
+            "direction": direction.strip().lower() if direction else "add",
+            "order_code": order_code.strip(),
+            "comments": comments.strip(),
+        })
 
 
 @app.post("/inventory/move")
@@ -680,6 +707,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 
 FLASH_COOKIE = "cfs_flash"
+STOCK_FORM_COOKIE = "cfs_stock_form"
 
 def set_flash(response: RedirectResponse, message: str) -> RedirectResponse:
     response.set_cookie(FLASH_COOKIE, message, max_age=10, httponly=True, samesite="lax")
@@ -687,3 +715,45 @@ def set_flash(response: RedirectResponse, message: str) -> RedirectResponse:
 
 def get_flash(request: Request) -> str:
     return request.cookies.get(FLASH_COOKIE, "")
+
+def set_stock_form_state(response: RedirectResponse, form_state: dict[str, str]) -> RedirectResponse:
+    payload = {
+        "category": (form_state.get("category") or "").strip(),
+        "item_code": (form_state.get("item_code") or "").strip(),
+        "location": (form_state.get("location") or "").strip(),
+        "quantity": str(form_state.get("quantity") or "1").strip(),
+        "direction": (form_state.get("direction") or "add").strip(),
+        "order_code": (form_state.get("order_code") or "").strip(),
+        "comments": (form_state.get("comments") or "").strip(),
+    }
+    response.set_cookie(
+        STOCK_FORM_COOKIE,
+        json.dumps(payload, separators=(",", ":")),
+        max_age=86400,
+        httponly=True,
+        samesite="lax",
+    )
+    return response
+
+def get_stock_form_state(request: Request) -> dict[str, str]:
+    raw = request.cookies.get(STOCK_FORM_COOKIE)
+    if not raw:
+        return {}
+
+    try:
+        data = json.loads(raw)
+    except Exception:
+        return {}
+
+    if not isinstance(data, dict):
+        return {}
+
+    return {
+        "category": str(data.get("category") or ""),
+        "item_code": str(data.get("item_code") or ""),
+        "location": str(data.get("location") or ""),
+        "quantity": str(data.get("quantity") or "1"),
+        "direction": str(data.get("direction") or "add"),
+        "order_code": str(data.get("order_code") or ""),
+        "comments": str(data.get("comments") or ""),
+    }

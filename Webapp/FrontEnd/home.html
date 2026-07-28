@@ -39,7 +39,7 @@
 
         <section class="hero">
             <h2>Quick stock edit</h2>
-            <p>Select the category and product, then press + or - to adjust stock. Add order code for inbound stock and sales order code for removals.</p>
+            <p>Select the category and product, then press + or - to adjust stock. Add Work Order for inbound stock and Sales Order for removals.</p>
         </section>
 
         <section class="section-block">
@@ -97,7 +97,7 @@
                 </div>
 
                 <label id="order-code-label">
-                    Work order code
+                    Work Order
                     <input type="text" name="order_code" required>
                 </label>
 
@@ -192,10 +192,22 @@
         const quantityInput = document.getElementById("stock-quantity");
         const quantityButtons = document.querySelectorAll(".quantity-step");
         const selectedItemCode = "{{ selected_item_code or '' }}";
+        const persistedStockForm = {
+            category: "{{ stock_form_state.get('category', '') }}",
+            item_code: "{{ stock_form_state.get('item_code', '') }}",
+            location: "{{ stock_form_state.get('location', '') }}",
+            quantity: "{{ stock_form_state.get('quantity', '1') }}",
+            direction: "{{ stock_form_state.get('direction', 'add') }}",
+            order_code: "{{ stock_form_state.get('order_code', '') }}",
+            comments: "{{ stock_form_state.get('comments', '') }}",
+        };
         const toast = document.getElementById("toast");
         const updateButton = document.getElementById("update-action-button");
         const currentCountEl = document.getElementById("current-count");
         const moveCountEl = document.getElementById("move-current-count");
+        const stockEditForm = document.querySelector('form[action="/inventory/change"]');
+        const stockLocationSelect = stockEditForm.querySelector('select[name="location"]');
+        const commentsInput = stockEditForm.querySelector('input[name="comments"]');
 
         function updateCountForSelect(selectEl, targetEl) {
             if (!selectEl || !targetEl) return;
@@ -270,9 +282,16 @@
 
         function updateOrderLabel() {
             const selectedDirection = document.querySelector("input[name='direction']:checked").value;
+            const existingOrderCodeInput = orderCodeLabel.querySelector("input[name='order_code']");
+            const existingOrderCodeValue = existingOrderCodeInput ? existingOrderCodeInput.value : "";
             orderCodeLabel.innerHTML = selectedDirection === "add"
-                ? 'Work order code <input type="text" name="order_code" required>'
-                : 'Sales order code <input type="text" name="order_code" required>';
+                ? 'Work Order code <input type="text" name="order_code" required>'
+                : 'Sales Order code <input type="text" name="order_code" required>';
+
+            const nextOrderCodeInput = orderCodeLabel.querySelector("input[name='order_code']");
+            if (nextOrderCodeInput) {
+                nextOrderCodeInput.value = existingOrderCodeValue;
+            }
 
             if (selectedDirection === "add") {
                 updateButton.textContent = "Confirm add";
@@ -285,7 +304,61 @@
             }
         }
 
+        function applyPersistedStockForm() {
+            if (!persistedStockForm || Object.keys(persistedStockForm).length === 0) {
+                return;
+            }
+
+            if (persistedStockForm.direction === "remove") {
+                const removeRadio = document.querySelector("input[name='direction'][value='remove']");
+                if (removeRadio) {
+                    removeRadio.checked = true;
+                }
+            }
+
+            if (persistedStockForm.category) {
+                categorySelect.value = persistedStockForm.category;
+            }
+            filterProducts();
+
+            if (persistedStockForm.item_code) {
+                productSelect.value = persistedStockForm.item_code;
+                const selected = productSelect.selectedOptions[0];
+                if ((!selected || selected.hidden) && persistedStockForm.category !== "") {
+                    for (const option of productSelect.options) {
+                        if (option.value === persistedStockForm.item_code) {
+                            categorySelect.value = option.dataset.category || "";
+                            filterProducts();
+                            productSelect.value = persistedStockForm.item_code;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (stockLocationSelect && persistedStockForm.location) {
+                stockLocationSelect.value = persistedStockForm.location;
+            }
+
+            const parsedQty = Number(persistedStockForm.quantity || 1);
+            quantityInput.value = Number.isFinite(parsedQty) && parsedQty > 0 ? parsedQty : 1;
+
+            updateOrderLabel();
+
+            const orderCodeInput = orderCodeLabel.querySelector("input[name='order_code']");
+            if (orderCodeInput) {
+                orderCodeInput.value = persistedStockForm.order_code || "";
+            }
+
+            if (commentsInput) {
+                commentsInput.value = persistedStockForm.comments || "";
+            }
+
+            updateCountForSelect(productSelect, currentCountEl);
+        }
+
         setSelectedItem();
+        applyPersistedStockForm();
         updateOrderLabel();
         updateCountForSelect(productSelect, currentCountEl);
         updateCountForSelect(moveProductSelect, moveCountEl);
