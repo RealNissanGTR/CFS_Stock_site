@@ -149,7 +149,6 @@
             <button class="admin-tab" data-tab="export">Export</button>
         </div>
 
-        <!-- USERS TAB -->
         <div id="users" class="admin-tab-content active">
             <section class="section-block">
                 <h2 style="margin-top: 0;">User Management</h2>
@@ -176,7 +175,7 @@
                                         </button>
                                     </form>
                                     <form method="post" action="/admin/delete_user/{{ target.id }}" style="display:inline;"
-                                          onsubmit="return confirm('Delete user {{ target.username }}?\n\nWARNING: THIS ACTION CANNOT BE UNDONE.');">
+                                        onsubmit="return confirm('Delete user {{ target.username }}?\n\nWARNING: THIS ACTION CANNOT BE UNDONE.');">
                                         <button type="submit" class="btn-danger" style="padding: 0.4rem 0.6rem; font-size: 0.75rem;">Delete</button>
                                     </form>
                                     {% else %}
@@ -213,7 +212,6 @@
             </section>
         </div>
 
-        <!-- STOCK TAB -->
         <div id="stock" class="admin-tab-content">
             <section class="section-block">
                 <h2 style="margin-top: 0;">Stock Management</h2>
@@ -278,7 +276,6 @@
             </section>
         </div>
 
-        <!-- LOGS TAB -->
         <div id="logs" class="admin-tab-content">
             <section class="section-block">
                 <div class="section-header">
@@ -317,7 +314,6 @@
             </section>
         </div>
 
-        <!-- EXPORT TAB -->
         <div id="export" class="admin-tab-content">
             <section class="section-block">
                 <h2 style="margin-top: 0;">Export Data</h2>

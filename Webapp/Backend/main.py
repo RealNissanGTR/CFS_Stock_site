@@ -587,6 +587,76 @@ def inventory_delete(
         return set_flash(r, f"Error deleting stock: {str(e)}")
 
 
+@app.get("/admin/export_data")
+def admin_export_data(request: Request):
+    require_admin(request)
+
+    with SessionLocal() as db:
+        stocks = db.query(Stock).order_by(Stock.item_code, Stock.location).all()
+        logs = db.query(Logs).order_by(Logs.timestamp.desc()).all()
+        users = db.query(User).order_by(User.username).all()
+
+    workbook = Workbook()
+
+    stock_sheet = workbook.active
+    stock_sheet.title = "Stock"
+    stock_sheet.append(["Item Code", "Product Name", "Category", "Location", "Stock Count"])
+    for stock in stocks:
+        stock_sheet.append([
+            stock.item_code,
+            stock.product_name,
+            stock.category or "",
+            stock.location,
+            stock.stock_count,
+        ])
+
+    logs_sheet = workbook.create_sheet("Logs")
+    logs_sheet.append([
+        "Timestamp",
+        "Action",
+        "Stock Name",
+        "Category",
+        "Quantity",
+        "Location",
+        "Performed By",
+        "Work Order",
+        "Purchase Order",
+        "Comments",
+    ])
+    for log in logs:
+        logs_sheet.append([
+            log.timestamp,
+            log.action,
+            log.stock_name,
+            log.category or "",
+            log.quantity,
+            log.location,
+            log.performed_by or "",
+            log.work_order or "",
+            log.purchase_order or "",
+            log.comments or "",
+        ])
+
+    users_sheet = workbook.create_sheet("Users")
+    users_sheet.append(["ID", "Username", "Is Admin"])
+    for user in users:
+        users_sheet.append([user.id, user.username, bool(user.is_admin)])
+
+    stream = io.BytesIO()
+    workbook.save(stream)
+    stream.seek(0)
+
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    filename = f"data-export-{timestamp}.xlsx"
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+
+    return StreamingResponse(
+        stream,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers=headers,
+    )
+
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     if exc.status_code == 303:
