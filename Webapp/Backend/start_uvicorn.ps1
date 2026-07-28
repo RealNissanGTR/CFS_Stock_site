@@ -9,6 +9,42 @@ $logDir = Join-Path $backendDir "logs"
 
 New-Item -ItemType Directory -Path $logDir -Force | Out-Null
 
+$firewallRuleName = "CFS Stock TCP $Port"
+try {
+    $existingRule = Get-NetFirewallRule -DisplayName $firewallRuleName -ErrorAction SilentlyContinue
+    if (-not $existingRule) {
+        New-NetFirewallRule `
+            -DisplayName $firewallRuleName `
+            -Direction Inbound `
+            -Action Allow `
+            -Protocol TCP `
+            -LocalPort $Port `
+            -Profile Private | Out-Null
+        Write-Host ("Added Windows Firewall rule for TCP {0} on Private networks" -f $Port)
+    }
+}
+catch {
+    Write-Host "Could not add Windows Firewall rule automatically (run PowerShell as Administrator to allow this)."
+}
+
+$lanIps = @()
+try {
+    $lanIps = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.IPAddress -and
+            $_.IPAddress -ne "127.0.0.1" -and
+            (
+                $_.IPAddress.StartsWith("192.168.") -or
+                $_.IPAddress.StartsWith("10.") -or
+                $_.IPAddress -match '^172\.(1[6-9]|2[0-9]|3[0-1])\.'
+            )
+        } |
+        Select-Object -ExpandProperty IPAddress -Unique
+}
+catch {
+    $lanIps = @()
+}
+
 $pythonCmd = $null
 $pythonArgs = @()
 
@@ -32,6 +68,14 @@ while ($true) {
 
     Write-Host ("Starting uvicorn on {0}:{1}" -f $BindHost, $Port)
     Write-Host ("Log file: {0}" -f $logFile)
+    if ($lanIps.Count -gt 0) {
+        foreach ($ip in $lanIps) {
+            Write-Host ("Try from other devices: http://{0}:{1}" -f $ip, $Port)
+        }
+    }
+    else {
+        Write-Host "No LAN IPv4 address detected. Ensure this PC is connected to your local network."
+    }
 
     $proc = Start-Process -FilePath $pythonCmd `
         -ArgumentList $pythonArgs `
@@ -56,9 +100,12 @@ while ($true) {
     Start-Sleep -Seconds 3
 }
 
-#cd "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend"
-#python -m venv venv
-#.\venv\Scripts\Activate.ps1
-#python -m pip install --upgrade pip
-#python -m pip install -r "..\..\requirements.txt"
-#powershell -ExecutionPolicy Bypass -File "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend\start_uvicorn.ps1"
+
+<# 
+"D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend"
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r "..\..\requirements.txt"
+powershell -ExecutionPolicy Bypass -File "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend\start_uvicorn.ps1"
+#>
