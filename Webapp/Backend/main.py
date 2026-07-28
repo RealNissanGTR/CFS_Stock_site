@@ -29,6 +29,8 @@ from db.db_init import (
     delete_user,
 )
 
+from backup.backup_db import quick_backup
+
 BASE_DIR = Path(__file__).resolve().parent
 FRONTEND_DIR = BASE_DIR.parent / "FrontEnd"
 
@@ -513,6 +515,10 @@ def inventory_change(
             comments=comments.strip() or None,
         )
         message = "Inventory removed successfully." if success else "Unable to remove inventory."
+
+    with SessionLocal() as db:
+        db.commit()
+        quick_backup()
 
     redirect_path = "/home"
     return RedirectResponse(url=f"{redirect_path}?message={message}", status_code=status.HTTP_303_SEE_OTHER)

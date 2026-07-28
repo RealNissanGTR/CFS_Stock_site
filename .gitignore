@@ -3,3 +3,5 @@ stock.db
 db
 logs
 venv
+db_backups
+stock.quick.db

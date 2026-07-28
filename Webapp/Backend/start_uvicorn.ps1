@@ -55,3 +55,10 @@ while ($true) {
     Write-Host "uvicorn stopped. Restarting in 3 seconds..."
     Start-Sleep -Seconds 3
 }
+
+#cd "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend"
+#python -m venv venv
+#.\venv\Scripts\Activate.ps1
+#python -m pip install --upgrade pip
+#python -m pip install -r "..\..\requirements.txt"
+#powershell -ExecutionPolicy Bypass -File "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend\start_uvicorn.ps1"
