@@ -194,6 +194,7 @@ def overview(request: Request):
 @app.get("/home", response_class=HTMLResponse)
 def home(request: Request):
     user = require_login(request)
+    flash = get_flash(request)
 
     with SessionLocal() as db:
         stocks = db.query(Stock).order_by(
@@ -204,7 +205,6 @@ def home(request: Request):
         ).all()
 
         categories = sorted({s.category or "Unassigned" for s in stocks})
-
         products_map = {}
         for s in stocks:
             key = s.item_code
@@ -225,14 +225,17 @@ def home(request: Request):
                 products_map[key]["paddock"] += count
             products_map[key]["total"] += count
 
-    return templates.TemplateResponse("home.html", {
+    response = templates.TemplateResponse("home.html", {
         "request": request,
         "user": user,
         "categories": categories,
         "products": list(products_map.values()),
         "selected_item_code": request.query_params.get("item_code", ""),
-        "message": request.query_params.get("message", ""),
+        "message": flash,
     })
+    response.delete_cookie(FLASH_COOKIE)
+    return response
+
 
 @app.get("/admin", response_class=HTMLResponse)
 def admin_panel(request: Request):
@@ -241,16 +244,14 @@ def admin_panel(request: Request):
     except Exception:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
+    flash = get_flash(request)
+
     try:
         with SessionLocal() as db:
             stocks_raw = db.query(Stock).order_by(
-                Stock.category,
-                Stock.product_name,
-                Stock.item_code,
-                Stock.location,
+                Stock.category, Stock.product_name, Stock.item_code, Stock.location,
             ).all()
 
-            # Build dicts INSIDE the with block while session is still open
             stocks_dict = [
                 {
                     "id": s.id,
@@ -263,17 +264,11 @@ def admin_panel(request: Request):
                 for s in stocks_raw
             ]
 
-            users = db.query(User).order_by(User.username).all()
             users_list = [
-                {
-                    "id": u.id,
-                    "username": u.username,
-                    "is_admin": u.is_admin,
-                }
-                for u in users
+                {"id": u.id, "username": u.username, "is_admin": u.is_admin}
+                for u in db.query(User).order_by(User.username).all()
             ]
 
-            logs_raw = db.query(Logs).order_by(Logs.timestamp.desc()).limit(200).all()
             logs_list = [
                 {
                     "timestamp": l.timestamp,
@@ -287,27 +282,24 @@ def admin_panel(request: Request):
                     "purchase_order": l.purchase_order or "",
                     "comments": l.comments or "",
                 }
-                for l in logs_raw
+                for l in db.query(Logs).order_by(Logs.timestamp.desc()).limit(200).all()
             ]
 
-        return templates.TemplateResponse(
-            "admin.html",
-            {
-                "request": request,
-                "user": user,
-                "stocks": stocks_dict,
-                "users": users_list,
-                "logs": logs_list,
-                "message": request.query_params.get("message", ""),
-            },
-        )
+        response = templates.TemplateResponse("admin.html", {
+            "request": request,
+            "user": user,
+            "stocks": stocks_dict,
+            "users": users_list,
+            "logs": logs_list,
+            "message": flash,
+        })
+        response.delete_cookie(FLASH_COOKIE)
+        return response
 
     except Exception as e:
         print(f"Admin panel error: {e}")
-        return RedirectResponse(
-            url=f"/home?message=Admin panel error: {str(e)}",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        r = RedirectResponse(url="/home", status_code=status.HTTP_303_SEE_OTHER)
+        return set_flash(r, f"Admin panel error: {str(e)}")
 
 
 def _normalize_item_fields(
@@ -327,31 +319,45 @@ def _normalize_item_code(item_code: Optional[str], stock_name: Optional[str] = N
 @app.post("/admin/create_stock")
 def admin_create_stock(
     request: Request,
-    item_code: Optional[str] = Form(None),
-    product_name: Optional[str] = Form(None),
-    stock_name: Optional[str] = Form(None),
+    item_code: str = Form(...),
+    product_name: str = Form(...),
     quantity: int = Form(...),
     location: str = Form("Workshop"),
     category: str = Form(""),
-    comments: str = Form(""),
 ):
-    require_admin(request)
-    item_code, product_name = _normalize_item_fields(item_code, product_name, stock_name)
+    try:
+        user = require_admin(request)
+        
+        item_code = item_code.strip()
+        product_name = product_name.strip()
+        
+        if not item_code or not product_name:
+            r = RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
+            return set_flash(r, "Item code and product name are required.")
+        
+        success = create_stock_item(
+            item_code=item_code,
+            product_name=product_name,
+            quantity=quantity,
+            location=location.strip(),
+            category=category.strip() or None,
+            performed_by=user.username,
+            created_by_admin=True,
+        )
+        
+        if success:
+            quick_backup()
+            message = f"Stock item '{product_name}' created successfully."
+        else:
+            message = f"Stock item with code '{item_code}' already exists at {location}."
+        
+        r = RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
+        return set_flash(r, message)
+        
+    except Exception as e:
+        r = RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
+        return set_flash(r, f"Error creating stock: {str(e)}")
 
-    if not item_code or not product_name:
-        return RedirectResponse(url="/admin?message=Item code and product name are required.", status_code=status.HTTP_303_SEE_OTHER)
-
-    create_stock_item(
-        item_code=item_code,
-        product_name=product_name,
-        quantity=quantity,
-        location=location.strip(),
-        category=category.strip() or None,
-        performed_by="admin",
-        created_by_admin=True,
-        comments=comments.strip() or None,
-    )
-    return RedirectResponse(url="/admin?message=Stock item created.", status_code=status.HTTP_303_SEE_OTHER)
 
 @app.post("/admin/add_user")
 def admin_add_user(
@@ -361,12 +367,14 @@ def admin_add_user(
     is_admin: str = Form(""),
 ):
     require_admin(request)
-    add_user_full(
+    success = add_user_full(
         username=username.strip(),
         password=password.strip(),
         is_admin=bool(is_admin),
     )
-    return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    message = f"User '{username}' created." if success else f"Username '{username}' already exists."
+    r = RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
+    return set_flash(r, message)
 
 
 @app.post("/admin/toggle_admin/{user_id}")
@@ -377,7 +385,11 @@ def admin_toggle_admin(request: Request, user_id: int):
         if target:
             target.is_admin = not target.is_admin
             db.commit()
-    return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+            message = f"{'Admin granted to' if target.is_admin else 'Admin revoked from'} '{target.username}'."
+        else:
+            message = "User not found."
+    r = RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
+    return set_flash(r, message)
 
 
 @app.post("/admin/edit_user")
@@ -389,31 +401,24 @@ def admin_edit_user(
     is_admin: str = Form(None),
 ):
     admin = require_admin(request)
-
     success = update_user(
         user_id=user_id,
         new_username=new_username.strip() or None,
         new_password=new_password.strip() or None,
         is_admin=bool(is_admin),
     )
-
-    response = RedirectResponse(
-        url=f"/admin?message={'User updated successfully.' if success else 'Unable to update user.'}",
-        status_code=status.HTTP_303_SEE_OTHER,
-    )
+    message = "User updated successfully." if success else "Unable to update user."
+    response = RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
+    set_flash(response, message)
 
     if success and user_id == admin.id:
         updated = get_user_by_id(user_id)
         if updated:
             response.set_cookie(
-                key=COOKIE_NAME,
-                value=_make_cookie_value(updated),
-                httponly=True,
-                max_age=COOKIE_MAX_AGE,
-                expires=COOKIE_MAX_AGE,
-                samesite="lax",
+                key=COOKIE_NAME, value=_make_cookie_value(updated),
+                httponly=True, max_age=COOKIE_MAX_AGE,
+                expires=COOKIE_MAX_AGE, samesite="lax",
             )
-
     return response
 
 
@@ -421,17 +426,13 @@ def admin_edit_user(
 def admin_delete_user(request: Request, user_id: int):
     try:
         admin = require_admin(request)
-
         success = delete_user(user_id=user_id, protect_username=admin.username)
-        message = "User deleted successfully." if success else "Unable to delete user (may be the last admin)."
-
-        return RedirectResponse(url=f"/admin?message={message}", status_code=status.HTTP_303_SEE_OTHER)
+        message = "User deleted successfully." if success else "Unable to delete user (may be the last admin or yourself)."
+        r = RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
+        return set_flash(r, message)
     except Exception as e:
-        message = f"Error deleting user: {str(e)}"
-        return RedirectResponse(
-            url=f"/admin?message={message}",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        r = RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
+        return set_flash(r, f"Error deleting user: {str(e)}")
 
 
 @app.post("/inventory/change")
@@ -451,139 +452,32 @@ def inventory_change(
         location = location.strip()
 
         if not item_code or quantity <= 0 or not order_code.strip():
-            message = "Invalid input. Please fill all required fields."
-            return RedirectResponse(
-                url=f"/home?message={message}",
-                status_code=status.HTTP_303_SEE_OTHER,
-            )
+            r = RedirectResponse(url="/home", status_code=status.HTTP_303_SEE_OTHER)
+            return set_flash(r, "Invalid input. Please fill all required fields.")
 
         if direction == "add":
             success = add_inventory_item(
-                item_code=item_code,
-                quantity=quantity,
-                location=location,
-                category=category.strip() or None,
-                performed_by=user.username,
-                work_order=order_code.strip(),
-                comments=comments.strip() or None,
+                item_code=item_code, quantity=quantity, location=location,
+                category=category.strip() or None, performed_by=user.username,
+                work_order=order_code.strip(), comments=comments.strip() or None,
                 user_is_admin=user.is_admin,
             )
             message = "Inventory added successfully." if success else "Unable to add inventory."
         else:
             success = remove_inventory_item(
-                item_code=item_code,
-                quantity=quantity,
-                location=location,
-                category=category.strip() or None,
-                performed_by=user.username,
-                purchase_order=order_code.strip(),
-                comments=comments.strip() or None,
+                item_code=item_code, quantity=quantity, location=location,
+                category=category.strip() or None, performed_by=user.username,
+                purchase_order=order_code.strip(), comments=comments.strip() or None,
             )
             message = "Inventory removed successfully." if success else "Unable to remove inventory."
 
         quick_backup()
-        return RedirectResponse(url=f"/home?message={message}", status_code=status.HTTP_303_SEE_OTHER)
+        r = RedirectResponse(url="/home", status_code=status.HTTP_303_SEE_OTHER)
+        return set_flash(r, message)
 
     except Exception as e:
-        message = f"Error: {str(e)}"
-        return RedirectResponse(
-            url=f"/home?message={message}",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
-
-
-@app.post("/admin/edit_stock")
-def admin_edit_stock(
-    request: Request,
-    stock_id: int = Form(...),
-    new_item_code: str = Form(""),
-    new_product_name: str = Form(""),
-    new_category: str = Form(""),
-    new_quantity: int = Form(None),
-):
-    try:
-        user = require_login(request)
-        if not user.is_admin:
-            raise HTTPException(status_code=403, detail="Admin only")
-
-        with SessionLocal() as db:
-            stock = db.query(Stock).filter(Stock.id == stock_id).first()
-            if not stock:
-                message = "Stock item not found."
-            else:
-                old_name = stock.product_name
-                if new_item_code.strip():
-                    stock.item_code = new_item_code.strip()
-                if new_product_name.strip():
-                    stock.product_name = new_product_name.strip()
-                if new_category.strip():
-                    stock.category = new_category.strip()
-                if new_quantity is not None and new_quantity >= 0:
-                    stock.stock_count = new_quantity
-
-                db.commit()
-                quick_backup()
-                message = f"Stock item '{old_name}' updated successfully."
-
-        return RedirectResponse(
-            url=f"/admin?message={message}",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
-    except Exception as e:
-        message = f"Error updating stock: {str(e)}"
-        return RedirectResponse(
-            url=f"/admin?message={message}",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
-
-
-@app.post("/inventory/delete")
-def inventory_delete(
-    request: Request,
-    item_code: str = Form(...),
-    location: str = Form(...),
-):
-    try:
-        user = require_login(request)
-        if not user.is_admin:
-            raise HTTPException(status_code=403, detail="Admin only")
-
-        item_code = item_code.strip()
-        location = location.strip()
-
-        if not item_code or not location:
-            message = "Item code and location are required."
-            return RedirectResponse(
-                url=f"/admin?message={message}",
-                status_code=status.HTTP_303_SEE_OTHER,
-            )
-
-        with SessionLocal() as db:
-            stock = db.query(Stock).filter(
-                Stock.item_code == item_code,
-                Stock.location == location,
-            ).first()
-
-            if not stock:
-                message = "Stock item not found."
-            else:
-                product_name = stock.product_name
-                db.delete(stock)
-                db.commit()
-                quick_backup()
-                message = f"Stock item '{product_name}' deleted successfully."
-
-        return RedirectResponse(
-            url=f"/admin?message={message}",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
-
-    except Exception as e:
-        message = f"Error deleting stock: {str(e)}"
-        return RedirectResponse(
-            url=f"/admin?message={message}",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        r = RedirectResponse(url="/home", status_code=status.HTTP_303_SEE_OTHER)
+        return set_flash(r, f"Error: {str(e)}")
 
 
 @app.post("/inventory/move")
@@ -599,18 +493,98 @@ def inventory_move(
     try:
         user = require_login(request)
         success = move_inventory_item(
-            item_code=item_code.strip(),
-            quantity=quantity,
-            from_location=from_location.strip(),
-            to_location=to_location.strip(),
-            performed_by=user.username,
-            comments=comments.strip() or None,
+            item_code=item_code.strip(), quantity=quantity,
+            from_location=from_location.strip(), to_location=to_location.strip(),
+            performed_by=user.username, comments=comments.strip() or None,
         )
         quick_backup()
         message = "Stock moved successfully." if success else "Unable to move stock. Check quantity and locations."
-        return RedirectResponse(url=f"/home?message={message}", status_code=status.HTTP_303_SEE_OTHER)
+        r = RedirectResponse(url="/home", status_code=status.HTTP_303_SEE_OTHER)
+        return set_flash(r, message)
     except Exception as e:
-        return RedirectResponse(url=f"/home?message=Error moving stock: {str(e)}", status_code=status.HTTP_303_SEE_OTHER)
+        r = RedirectResponse(url="/home", status_code=status.HTTP_303_SEE_OTHER)
+        return set_flash(r, f"Error moving stock: {str(e)}")
+
+
+@app.post("/admin/edit_stock")
+def admin_edit_stock(
+    request: Request,
+    stock_id: int = Form(...),
+    new_item_code: str = Form(""),
+    new_product_name: str = Form(""),
+    new_category: str = Form(""),
+    new_quantity: int = Form(None),
+):
+    try:
+        user = require_login(request)
+        if not user.is_admin:
+            r = RedirectResponse(url="/home", status_code=status.HTTP_303_SEE_OTHER)
+            return set_flash(r, "Admin only.")
+
+        with SessionLocal() as db:
+            stock = db.query(Stock).filter(Stock.id == stock_id).first()
+            if not stock:
+                message = "Stock item not found."
+            else:
+                old_name = stock.product_name
+                if new_item_code.strip():
+                    stock.item_code = new_item_code.strip()
+                if new_product_name.strip():
+                    stock.product_name = new_product_name.strip()
+                if new_category.strip():
+                    stock.category = new_category.strip()
+                if new_quantity is not None and new_quantity >= 0:
+                    stock.stock_count = new_quantity
+                db.commit()
+                quick_backup()
+                message = f"Stock item '{old_name}' updated successfully."
+
+        r = RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
+        return set_flash(r, message)
+    except Exception as e:
+        r = RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
+        return set_flash(r, f"Error updating stock: {str(e)}")
+
+
+@app.post("/inventory/delete")
+def inventory_delete(
+    request: Request,
+    item_code: str = Form(...),
+    location: str = Form(...),
+):
+    try:
+        user = require_login(request)
+        if not user.is_admin:
+            r = RedirectResponse(url="/home", status_code=status.HTTP_303_SEE_OTHER)
+            return set_flash(r, "Admin only.")
+
+        item_code = item_code.strip()
+        location = location.strip()
+
+        if not item_code or not location:
+            r = RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
+            return set_flash(r, "Item code and location are required.")
+
+        # Use delete_stock_item so the action is logged
+        success = delete_stock_item(
+            item_code=item_code,
+            location=location,
+            performed_by=user.username,
+            deleted_by_admin=True,
+        )
+
+        if success:
+            quick_backup()
+            message = f"Stock item '{item_code}' deleted successfully."
+        else:
+            message = f"Stock item '{item_code}' not found at {location}."
+
+        r = RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
+        return set_flash(r, message)
+
+    except Exception as e:
+        r = RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
+        return set_flash(r, f"Error deleting stock: {str(e)}")
 
 
 @app.exception_handler(HTTPException)
@@ -633,3 +607,13 @@ async def general_exception_handler(request: Request, exc: Exception):
         url=f"/home?message={message}",
         status_code=status.HTTP_303_SEE_OTHER,
     )
+
+
+FLASH_COOKIE = "cfs_flash"
+
+def set_flash(response: RedirectResponse, message: str) -> RedirectResponse:
+    response.set_cookie(FLASH_COOKIE, message, max_age=10, httponly=True, samesite="lax")
+    return response
+
+def get_flash(request: Request) -> str:
+    return request.cookies.get(FLASH_COOKIE, "")
