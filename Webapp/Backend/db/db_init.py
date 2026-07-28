@@ -247,7 +247,6 @@ def remove_inventory_item(
         return True
 
 def add_user_full(username: str, password: str, email: Optional[str] = None, is_admin: bool = False) -> bool:
-    init_db()
     with SessionLocal() as db:
         if db.query(User).filter_by(username=username).first():
             return False

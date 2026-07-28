@@ -35,6 +35,12 @@
             max-height: 0;
             opacity: 0;
         }
+        .warning-text {
+            color: #f87171;
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -53,9 +59,7 @@
         </header>
 
         {% if message %}
-        <div class="card" style="margin-bottom: 1rem;">
-            {{ message }}
-        </div>
+        <div id="toast" class="toast toast-visible">{{ message }}</div>
         {% endif %}
 
         <div class="section-group">
@@ -72,6 +76,7 @@
                             </tr>
                         </thead>
                         <tbody>
+                            <!-- User table -->
                             {% for target in users %}
                             <tr>
                                 <td>{{ target.username }}</td>
@@ -79,16 +84,16 @@
                                 <td>
                                     {% if target.username != user.username %}
                                     <form method="post" action="/admin/toggle_admin/{{ target.id }}" style="display:inline;">
-                                        <button type="submit">
+                                        <button type="submit" class="btn-add" style="padding: 0.5rem 0.8rem; font-size: 0.85rem;">
                                             {{ "Revoke admin" if target.is_admin else "Make admin" }}
                                         </button>
                                     </form>
                                     <form method="post" action="/admin/delete_user/{{ target.id }}" style="display:inline;"
-                                          onsubmit="return confirm('Delete this user? This cannot be undone.');">
-                                        <button type="submit">Delete</button>
+                                          onsubmit="return confirm('Delete user {{ target.username }}?\n\nWARNING: THIS ACTION CANNOT BE UNDONE.');">
+                                        <button type="submit" class="btn-danger" style="padding: 0.5rem 0.8rem; font-size: 0.85rem;">Delete</button>
                                     </form>
                                     {% else %}
-                                    Current
+                                    <span style="color: var(--muted);">Current user</span>
                                     {% endif %}
                                 </td>
                             </tr>
@@ -109,6 +114,7 @@
                     <label>
                         Select user
                         <select name="user_id" required>
+                            <!-- Edit user select -->
                             {% for target in users %}
                             <option value="{{ target.id }}">{{ target.username }}</option>
                             {% endfor %}
@@ -122,6 +128,8 @@
 
             <section class="section-block">
                 <h2>Stock management</h2>
+                
+                <h3>Create stock item</h3>
                 <form class="form-grid" method="post" action="/admin/create_stock">
                     <label>Item code <input type="text" name="item_code" required></label>
                     <label>Product name <input type="text" name="product_name" required></label>
@@ -137,18 +145,45 @@
                     <button type="submit">Create stock item</button>
                 </form>
 
-                <h3 style="margin-top: 1rem;">Delete stock item</h3>
-                <form class="form-grid" method="post" action="/admin/delete_stock"
-                      onsubmit="return confirm('Delete this stock item? This cannot be undone.');">
-                    <label>Item code <input type="text" name="item_code" required></label>
+                <h3 style="margin-top: 1.5rem;">Edit stock item</h3>
+                <form class="form-grid" method="post" action="/admin/edit_stock">
+                    <label>
+                        Select item
+                        <select id="edit-stock-select" name="stock_id" required>
+                            <option value="">Choose an item to edit</option>
+                            {% for stock in stocks %}
+                            <option value="{{ stock.id }}" data-item-code="{{ stock.item_code }}" data-product-name="{{ stock.product_name }}" data-category="{{ stock.category or '' }}" data-quantity="{{ stock.stock_count }}" data-location="{{ stock.location }}">
+                                {{ stock.product_name }} ({{ stock.item_code }}) - {{ stock.location }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>New item code <input type="text" id="edit-item-code" name="new_item_code" placeholder="Leave blank to keep current"></label>
+                    <label>New product name <input type="text" id="edit-product-name" name="new_product_name" placeholder="Leave blank to keep current"></label>
+                    <label>New category <input type="text" id="edit-category" name="new_category" placeholder="Leave blank to keep current"></label>
+                    <label>New quantity <input type="number" id="edit-quantity" name="new_quantity" min="0" placeholder="Leave blank to keep current"></label>
+                    <button type="submit">Save changes</button>
+                </form>
+
+                <h3 style="margin-top: 1.5rem;">Delete stock item</h3>
+                <form class="form-grid" method="post" action="/inventory/delete" onsubmit="return confirm('Delete this stock item?\n\nWARNING: THIS ACTION CANNOT BE UNDONE.');">
+                    <label>
+                        Item code
+                        <input type="text" id="delete-item-code" name="item_code" placeholder="Enter item code" required>
+                        <div id="delete-item-counter" class="item-counter" aria-live="polite"></div>
+                    </label>
+
                     <label>
                         Location
                         <select name="location" required>
+                            <option value="">Select location</option>
                             <option value="Workshop">Workshop</option>
                             <option value="Paddock">Paddock</option>
                         </select>
                     </label>
-                    <button type="submit">Delete stock item</button>
+
+                    <button type="submit" class="btn-danger">Delete item</button>
+                    <div class="warning-text">⚠ WARNING: THIS ACTION CANNOT BE UNDONE</div>
                 </form>
             </section>
 
@@ -175,18 +210,19 @@
                                 </tr>
                             </thead>
                             <tbody>
+                                <!-- Logs table -->
                                 {% for log in logs %}
                                 <tr>
                                     <td>{{ log.timestamp }}</td>
                                     <td>{{ log.action }}</td>
                                     <td>{{ log.stock_name }}</td>
-                                    <td>{{ log.category or "" }}</td>
+                                    <td>{{ log.category }}</td>
                                     <td>{{ log.quantity }}</td>
                                     <td>{{ log.location }}</td>
-                                    <td>{{ log.performed_by or "" }}</td>
-                                    <td>{{ log.work_order or "" }}</td>
-                                    <td>{{ log.purchase_order or "" }}</td>
-                                    <td>{{ log.comments or "" }}</td>
+                                    <td>{{ log.performed_by }}</td>
+                                    <td>{{ log.work_order }}</td>
+                                    <td>{{ log.purchase_order }}</td>
+                                    <td>{{ log.comments }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -207,11 +243,76 @@
     <script>
         const toggleLogs = document.getElementById("toggle-logs");
         const logsPanel = document.getElementById("logs-panel");
+        const stocksData = {{ stocks | tojson | safe }};
 
         toggleLogs.addEventListener("click", () => {
             const hidden = logsPanel.classList.toggle("collapsed");
             toggleLogs.textContent = hidden ? "Show logs" : "Hide logs";
         });
+
+        // Delete item counter
+        const deleteItemCodeInput = document.getElementById("delete-item-code");
+        const deleteItemCounter = document.getElementById("delete-item-counter");
+
+        function updateDeleteCounter() {
+            const code = deleteItemCodeInput.value.trim().toUpperCase();
+            if (!code) {
+                deleteItemCounter.textContent = "";
+                return;
+            }
+
+            const matches = stocksData.filter(s => s.item_code && s.item_code.toUpperCase() === code);
+            if (matches.length === 0) {
+                deleteItemCounter.innerHTML = "<small style='color: var(--muted);'>Item not found</small>";
+                return;
+            }
+
+            const locationCounts = {};
+            matches.forEach(s => {
+                const loc = s.location || "Unknown";
+                locationCounts[loc] = (locationCounts[loc] || 0) + (s.stock_count || 0);
+            });
+
+            let html = `In stock: <strong>${Object.values(locationCounts).reduce((a, b) => a + b, 0)}</strong><small> (`;
+            html += Object.entries(locationCounts).map(([loc, count]) => `${loc}: ${count}`).join(" | ");
+            html += ")</small>";
+            deleteItemCounter.innerHTML = html;
+        }
+
+        deleteItemCodeInput.addEventListener("input", updateDeleteCounter);
+        deleteItemCodeInput.addEventListener("change", updateDeleteCounter);
+
+        // Edit stock item
+        const editStockSelect = document.getElementById("edit-stock-select");
+        const editItemCode = document.getElementById("edit-item-code");
+        const editProductName = document.getElementById("edit-product-name");
+        const editCategory = document.getElementById("edit-category");
+        const editQuantity = document.getElementById("edit-quantity");
+
+        editStockSelect.addEventListener("change", () => {
+            const option = editStockSelect.selectedOptions[0];
+            if (!option.value) {
+                editItemCode.value = "";
+                editProductName.value = "";
+                editCategory.value = "";
+                editQuantity.value = "";
+                return;
+            }
+            editItemCode.placeholder = "Current: " + option.dataset.itemCode;
+            editProductName.placeholder = "Current: " + option.dataset.productName;
+            editCategory.placeholder = "Current: " + (option.dataset.category || "None");
+            editQuantity.placeholder = "Current: " + option.dataset.quantity;
+            editItemCode.value = "";
+            editProductName.value = "";
+            editCategory.value = "";
+            editQuantity.value = "";
+        });
+
+        // Toast message auto-hide
+        const toast = document.getElementById("toast");
+        if (toast && toast.textContent.trim()) {
+            setTimeout(() => toast.classList.remove("toast-visible"), 3500);
+        }
     </script>
 </body>
 </html>

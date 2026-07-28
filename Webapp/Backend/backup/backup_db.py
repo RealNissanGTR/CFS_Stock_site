@@ -104,4 +104,4 @@ if __name__ == "__main__":
 
 
 #task scheduler command to run weekly backup of the database
-#-NoProfile -ExecutionPolicy Bypass -File "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend\backup_db.py" weekly
+# -NoProfile -ExecutionPolicy Bypass -Command "cd 'D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend'; .\venv\Scripts\python.exe backup\backup_db.py weekly"
