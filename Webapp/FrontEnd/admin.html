@@ -245,7 +245,7 @@
                     <div id="stock-dropdown" class="stock-search-dropdown"></div>
                 </div>
 
-                <form class="compact-grid" method="post" action="/admin/edit_stock" id="edit-form" style="display: none;">
+                <form class="compact-grid" method="post" action="/admin/edit_stock" id="edit-form" style="display: none; margin-bottom: 2rem;">
                     <input type="hidden" name="stock_id" id="edit-stock-id">
                     <label>Item Code <input type="text" id="edit-item-code" name="new_item_code" placeholder="Leave blank"></label>
                     <label>Product Name <input type="text" id="edit-product-name" name="new_product_name" placeholder="Leave blank"></label>
@@ -254,8 +254,10 @@
                     <button type="submit" style="grid-column: 1 / -1;">Save Changes</button>
                     <button type="button" id="clear-edit" style="grid-column: 1 / -1; background: rgba(255,255,255,0.1);">Clear Selection</button>
                 </form>
+            </section>
 
-                <h3 style="margin-top: 2rem;">Delete Item</h3>
+            <section class="section-block">
+                <h2>Delete Item</h2>
                 <form class="compact-grid" method="post" action="/inventory/delete" onsubmit="return confirm('Delete this stock item?\n\nWARNING: THIS ACTION CANNOT BE UNDONE.');">
                     <label>
                         Item Code
