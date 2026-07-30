@@ -100,7 +100,7 @@ python -m venv venv
 
 ```powershell
 python -m pip install --upgrade pip
-python -m pip install -r "..\..\requirements.txt"
+python -m pip install -r "requirements.txt"
 ```
 
 ### 4. Start the app
