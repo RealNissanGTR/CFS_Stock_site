@@ -7,12 +7,13 @@ A local web application for tracking inventory across Workshop and Paddock locat
 ## Table of Contents
 1. [What this does](#what-this-does)
 2. [Required software](#required-software)
-3. [Setup (one-time)](#setup-one-time)
-4. [Starting the app](#starting-the-app)
-5. [Features & how to use](#features--how-to-use)
-6. [Backups & restoration](#backups--restoration)
-7. [Troubleshooting](#troubleshooting)
-8. [Tips & best practices](#tips--best-practices)
+3. [Download and prepare all project files](#download-and-prepare-all-project-files)
+4. [Setup (one-time)](#setup-one-time)
+5. [Starting the app](#starting-the-app)
+6. [Features & how to use](#features--how-to-use)
+7. [Backups & restoration](#backups--restoration)
+8. [Troubleshooting](#troubleshooting)
+9. [Tips & best practices](#tips--best-practices)
 
 ---
 
@@ -48,6 +49,60 @@ Install these before proceeding:
    - Useful for version control and sharing project files
 
 3. **Windows** (or Linux/Mac with appropriate path adjustments)
+
+---
+
+## Download and prepare all project files
+
+Choose one of these methods.
+
+### Option A: Download from Git (recommended)
+
+1. Open PowerShell.
+2. Move to the folder where you want to store the project:
+
+```powershell
+cd D:\
+mkdir CFS_WEBAPP -ErrorAction SilentlyContinue
+cd .\CFS_WEBAPP
+```
+
+3. Clone the repository:
+
+```powershell
+git clone <YOUR_REPOSITORY_URL> CFS_Stock_site
+cd .\CFS_Stock_site
+```
+
+Replace `<YOUR_REPOSITORY_URL>` with your actual Git URL.
+
+### Option B: Download ZIP (no Git required)
+
+1. Download the project ZIP from your repository host (GitHub, OneDrive, SharePoint, etc.).
+2. Extract it to:
+
+```text
+D:\CFS_WEBAPP\CFS_Stock_site
+```
+
+3. Make sure the extracted folder is named exactly `CFS_Stock_site`.
+
+### Verify file structure before setup
+
+From `D:\CFS_WEBAPP\CFS_Stock_site`, confirm you have:
+
+- `requirements.txt`
+- `readme.md`
+- `Webapp\Backend\main.py`
+- `Webapp\Backend\db\db_init.py`
+- `Webapp\Backend\start_uvicorn.ps1`
+- `Webapp\FrontEnd\login.html`
+- `Webapp\FrontEnd\home.html`
+- `Webapp\FrontEnd\overview.html`
+- `Webapp\FrontEnd\admin.html`
+- `Webapp\FrontEnd\styles.css`
+
+If any are missing, re-download and extract again before continuing.
 
 ---
 
