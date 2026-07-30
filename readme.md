@@ -72,7 +72,7 @@ This script can install Python for the user (optional), create the virtual envir
 Run from project root (`D:\CFS_WEBAPP\CFS_Stock_site`):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File ".\Scripts\First_setup.ps1"
+powershell -ExecutionPolicy Bypass -File ".\startup_scripts\First_setup.ps1"
 ```
 
 What users will see:
@@ -116,8 +116,8 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 Tip: You can force script behavior with switches:
 
-- Auto-install Python without prompt: `powershell -ExecutionPolicy Bypass -File ".\Scripts\First_setup.ps1" -InstallPython`
-- Never auto-install Python: `powershell -ExecutionPolicy Bypass -File ".\Scripts\First_setup.ps1" -SkipPythonInstall`
+- Auto-install Python without prompt: `powershell -ExecutionPolicy Bypass -File ".\startup_scripts\First_setup.ps1" -InstallPython`
+- Never auto-install Python: `powershell -ExecutionPolicy Bypass -File ".\startup_scripts\First_setup.ps1" -SkipPythonInstall`
 
 ---
 
@@ -162,8 +162,8 @@ From `D:\CFS_WEBAPP\CFS_Stock_site`, confirm you have:
 
 - `requirements.txt`
 - `readme.md`
-- `Scripts\First_setup.ps1`
-- `Scripts\start_uvicorn.ps1`
+- `startup_scripts\First_setup.ps1`
+- `startup_scripts\start_uvicorn.ps1`
 - `Webapp\Backend\main.py`
 - `Webapp\Backend\db\db_init.py`
 - `Webapp\FrontEnd\login.html`
@@ -182,7 +182,7 @@ If any are missing, re-download and extract again before continuing.
 Ensure this folder structure exists:
 ```
 D:\CFS_WEBAPP\CFS_Stock_site\
-├── Scripts\
+├── startup_scripts\
 │   ├── First_setup.ps1
 │   └── start_uvicorn.ps1
 ├── Webapp\
@@ -256,12 +256,12 @@ Press `Ctrl+C` to stop.
 ### Option B: PowerShell wrapper (recommended for 24/7 use)
 This runs the app in the background and logs output.
 
-1. Ensure `start_uvicorn.ps1` exists in `D:\CFS_WEBAPP\CFS_Stock_site\Scripts\`.
+1. Ensure `start_uvicorn.ps1` exists in `D:\CFS_WEBAPP\CFS_Stock_site\startup_scripts\`.
 
 2. Run it:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File "D:\CFS_WEBAPP\CFS_Stock_site\Scripts\start_uvicorn.ps1"
+powershell -ExecutionPolicy Bypass -File "D:\CFS_WEBAPP\CFS_Stock_site\startup_scripts\start_uvicorn.ps1"
 ```
 
 3. Leave the PowerShell window open.
@@ -278,7 +278,7 @@ For true 24/7 operation:
    - Program/script: `powershell.exe`
    - Arguments:
    ```powershell
-   -NoProfile -ExecutionPolicy Bypass -File "D:\CFS_WEBAPP\CFS_Stock_site\Scripts\start_uvicorn.ps1"
+   -NoProfile -ExecutionPolicy Bypass -File "D:\CFS_WEBAPP\CFS_Stock_site\startup_scripts\start_uvicorn.ps1"
    ```
    - Start in: `D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend`
 5. Settings: check "Run whether user is logged in or not"
@@ -629,7 +629,7 @@ python backup_db.py restore-file "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend\ba
 To move the project to a different folder:
 1. Copy the entire `CFS_Stock_site` folder
 2. Update paths in:
-   - `Scripts\start_uvicorn.ps1`
+   - `startup_scripts\start_uvicorn.ps1`
    - Task Scheduler tasks (if any)
    - This readme
 3. Run setup steps again to create a new venv
