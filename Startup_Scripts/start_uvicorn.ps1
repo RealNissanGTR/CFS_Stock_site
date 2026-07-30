@@ -6,7 +6,9 @@ param(
     [string]$SslKeyFile = ""
 )
 
-$backendDir = "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend"
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent $scriptDir
+$backendDir = Join-Path $repoRoot "Webapp\Backend"
 $venvPython = Join-Path $backendDir "venv\Scripts\python.exe"
 $logDir = Join-Path $backendDir "logs"
 
@@ -56,12 +58,7 @@ if (Test-Path $venvPython) {
     $pythonArgs = @("-m", "uvicorn", "main:app", "--host", $BindHost, "--port", $Port.ToString())
 }
 else {
-    $pythonResult = Get-Command python -ErrorAction SilentlyContinue
-    if (-not $pythonResult) {
-        throw "Python was not found. Install Python and try again."
-    }
-    $pythonCmd = $pythonResult.Source
-    $pythonArgs = @("-m", "uvicorn", "main:app", "--host", $BindHost, "--port", $Port.ToString())
+    throw "Virtual environment Python not found at '$venvPython'. Run .\\Scripts\\First_setup.ps1 from the repository root to create the environment and install requirements."
 }
 
 $scheme = "http"
@@ -122,13 +119,3 @@ while ($true) {
     Write-Host "uvicorn stopped. Restarting in 3 seconds..."
     Start-Sleep -Seconds 3
 }
-
-
-<# 
-cd "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend"
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -r "..\..\requirements.txt"
-powershell -ExecutionPolicy Bypass -File "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend\start_uvicorn.ps1"
-#>
