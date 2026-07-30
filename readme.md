@@ -72,7 +72,7 @@ This script can install Python for the user (optional), create the virtual envir
 Run from project root (`D:\CFS_WEBAPP\CFS_Stock_site`):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File ".\startup_scripts\First_setup.ps1"
+powershell -ExecutionPolicy Bypass -File ".\Startup_Scripts\First_setup.ps1"
 ```
 
 What users will see:
@@ -100,7 +100,7 @@ python -m venv venv
 
 ```powershell
 python -m pip install --upgrade pip
-python -m pip install -r "requirements.txt"
+python -m pip install -r "..\..\requirements.txt"
 ```
 
 ### 4. Start the app
@@ -116,8 +116,8 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 Tip: You can force script behavior with switches:
 
-- Auto-install Python without prompt: `powershell -ExecutionPolicy Bypass -File ".\startup_scripts\First_setup.ps1" -InstallPython`
-- Never auto-install Python: `powershell -ExecutionPolicy Bypass -File ".\startup_scripts\First_setup.ps1" -SkipPythonInstall`
+- Auto-install Python without prompt: `powershell -ExecutionPolicy Bypass -File ".\Startup_Scripts\First_setup.ps1" -InstallPython`
+- Never auto-install Python: `powershell -ExecutionPolicy Bypass -File ".\Startup_Scripts\First_setup.ps1" -SkipPythonInstall`
 
 ---
 
@@ -162,8 +162,8 @@ From `D:\CFS_WEBAPP\CFS_Stock_site`, confirm you have:
 
 - `requirements.txt`
 - `readme.md`
-- `startup_scripts\First_setup.ps1`
-- `startup_scripts\start_uvicorn.ps1`
+- `Startup_Scripts\First_setup.ps1`
+- `Startup_Scripts\start_uvicorn.ps1`
 - `Webapp\Backend\main.py`
 - `Webapp\Backend\db\db_init.py`
 - `Webapp\FrontEnd\login.html`
@@ -178,11 +178,28 @@ If any are missing, re-download and extract again before continuing.
 
 ## Setup (one-time)
 
+### Step 0: Run first setup
+
+Before creating the virtual environment manually, you can let the first setup script do it for you from the project root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File ".\Startup_Scripts\First_setup.ps1"
+```
+
+This is the same first-time setup used in the quick start section. It will:
+
+- Check whether Python is already installed
+- Offer to install Python automatically if needed
+- Create the virtual environment
+- Install all required packages
+
+If you prefer to set everything up by hand, continue with the steps below.
+
 ### Step 1: Prepare folders
 Ensure this folder structure exists:
 ```
 D:\CFS_WEBAPP\CFS_Stock_site\
-├── startup_scripts\
+├── Startup_Scripts\
 │   ├── First_setup.ps1
 │   └── start_uvicorn.ps1
 ├── Webapp\
@@ -256,12 +273,12 @@ Press `Ctrl+C` to stop.
 ### Option B: PowerShell wrapper (recommended for 24/7 use)
 This runs the app in the background and logs output.
 
-1. Ensure `start_uvicorn.ps1` exists in `D:\CFS_WEBAPP\CFS_Stock_site\startup_scripts\`.
+1. Ensure `start_uvicorn.ps1` exists in `D:\CFS_WEBAPP\CFS_Stock_site\Startup_Scripts\`.
 
 2. Run it:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File "D:\CFS_WEBAPP\CFS_Stock_site\startup_scripts\start_uvicorn.ps1"
+powershell -ExecutionPolicy Bypass -File "D:\CFS_WEBAPP\CFS_Stock_site\Startup_Scripts\start_uvicorn.ps1"
 ```
 
 3. Leave the PowerShell window open.
@@ -278,7 +295,7 @@ For true 24/7 operation:
    - Program/script: `powershell.exe`
    - Arguments:
    ```powershell
-   -NoProfile -ExecutionPolicy Bypass -File "D:\CFS_WEBAPP\CFS_Stock_site\startup_scripts\start_uvicorn.ps1"
+   -NoProfile -ExecutionPolicy Bypass -File "D:\CFS_WEBAPP\CFS_Stock_site\Startup_Scripts\start_uvicorn.ps1"
    ```
    - Start in: `D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend`
 5. Settings: check "Run whether user is logged in or not"
@@ -629,7 +646,7 @@ python backup_db.py restore-file "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend\ba
 To move the project to a different folder:
 1. Copy the entire `CFS_Stock_site` folder
 2. Update paths in:
-   - `startup_scripts\start_uvicorn.ps1`
+   - `Startup_Scripts\start_uvicorn.ps1`
    - Task Scheduler tasks (if any)
    - This readme
 3. Run setup steps again to create a new venv
