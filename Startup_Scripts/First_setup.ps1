@@ -11,6 +11,7 @@ $backendDir = Join-Path $repoRoot "Webapp\Backend"
 $requirementsPath = Join-Path $repoRoot "requirements.txt"
 $venvDir = Join-Path $backendDir "venv"
 $venvPython = Join-Path $venvDir "Scripts\python.exe"
+$minimumPythonVersion = [version]"3.10"
 
 function Find-Python {
     $pythonCmd = Get-Command python -ErrorAction SilentlyContinue
@@ -26,13 +27,46 @@ function Find-Python {
     return $null
 }
 
+function Get-PythonVersion([hashtable]$pythonInfo) {
+    try {
+        if ($pythonInfo.UsePyLauncher) {
+            $versionText = & $pythonInfo.Exe -3 -c "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}.{sys.version_info[2]}')"
+        }
+        else {
+            $versionText = & $pythonInfo.Exe -c "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}.{sys.version_info[2]}')"
+        }
+
+        if (-not $versionText) {
+            return $null
+        }
+
+        return [version]($versionText.Trim())
+    }
+    catch {
+        return $null
+    }
+}
+
 function Ensure-Python {
     $pythonInfo = Find-Python
     if ($pythonInfo) {
-        return $pythonInfo
+        $detectedVersion = Get-PythonVersion $pythonInfo
+        if ($detectedVersion -and $detectedVersion -ge $minimumPythonVersion) {
+            Write-Host "Detected Python $detectedVersion (meets minimum $minimumPythonVersion)."
+            return $pythonInfo
+        }
+
+        if ($detectedVersion) {
+            Write-Host "Detected Python $detectedVersion, but version $minimumPythonVersion or higher is required."
+        }
+        else {
+            Write-Host "Python was detected, but its version could not be verified."
+        }
     }
 
-    Write-Host "Python was not found on this machine."
+    if (-not $pythonInfo) {
+        Write-Host "Python was not found on this machine."
+    }
 
     $shouldInstall = $false
     if ($InstallPython) {
@@ -72,16 +106,24 @@ function Ensure-Python {
 
     foreach ($candidate in $candidatePaths) {
         if (Test-Path $candidate) {
-            return @{ Exe = $candidate; UsePyLauncher = $false }
+            $candidateInfo = @{ Exe = $candidate; UsePyLauncher = $false }
+            $candidateVersion = Get-PythonVersion $candidateInfo
+            if ($candidateVersion -and $candidateVersion -ge $minimumPythonVersion) {
+                return $candidateInfo
+            }
         }
     }
 
     $pyCmd = Get-Command py -ErrorAction SilentlyContinue
     if ($pyCmd) {
-        return @{ Exe = $pyCmd.Source; UsePyLauncher = $true }
+        $launcherInfo = @{ Exe = $pyCmd.Source; UsePyLauncher = $true }
+        $launcherVersion = Get-PythonVersion $launcherInfo
+        if ($launcherVersion -and $launcherVersion -ge $minimumPythonVersion) {
+            return $launcherInfo
+        }
     }
 
-    throw "Python installation completed, but Python was not found in this terminal session. Open a new PowerShell window and rerun .\\Scripts\\First_setup.ps1."
+    throw "Python $minimumPythonVersion or higher is required. Open a new PowerShell window and rerun .\\Startup_Scripts\\First_setup.ps1."
 }
 
 if (-not (Test-Path $backendDir)) {
@@ -93,12 +135,6 @@ if (-not (Test-Path $requirementsPath)) {
 }
 
 $existingPython = Find-Python
-if ($existingPython) {
-    Write-Host "Python is already installed on this device: $($existingPython.Exe)"
-    Write-Host "Skipping setup and exiting without changes."
-    exit 0
-}
-
 $pythonInfo = Ensure-Python
 
 Push-Location $backendDir

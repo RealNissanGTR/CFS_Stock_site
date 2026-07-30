@@ -59,6 +59,15 @@ Install these before proceeding:
 
 3. **Windows** (or Linux/Mac with appropriate path adjustments)
 
+### Path note (D: or C:)
+
+This project works from any drive. The scripts are path-aware and resolve folders automatically.
+
+- If you install on `D:`, use paths like `D:\CFS_WEBAPP\CFS_Stock_site`
+- If you install on `C:`, use paths like `C:\CFS_WEBAPP\CFS_Stock_site`
+
+In all commands below, replace the drive and base folder with your own location.
+
 ---
 
 ## Quick start (5 minutes)
@@ -71,13 +80,17 @@ This script can install Python for the user (optional), create the virtual envir
 
 Run from project root (`D:\CFS_WEBAPP\CFS_Stock_site`):
 
+- Example on `D:`: `D:\CFS_WEBAPP\CFS_Stock_site`
+- Example on `C:`: `C:\CFS_WEBAPP\CFS_Stock_site`
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File ".\Startup_Scripts\First_setup.ps1"
 ```
 
 What users will see:
 
-- If Python is already installed, setup continues normally.
+- If Python 3.10+ is already installed, setup continues normally.
+- If Python is installed but older than 3.10, the script asks to install a newer version.
 - If Python is missing, the script asks: `Install Python automatically now using winget? (Y/N)`.
 - Users can choose `Y` for automatic install or `N` to install manually later.
 
@@ -136,6 +149,14 @@ mkdir CFS_WEBAPP -ErrorAction SilentlyContinue
 cd .\CFS_WEBAPP
 ```
 
+If you prefer `C:` instead of `D:`, use:
+
+```powershell
+cd C:\
+mkdir CFS_WEBAPP -ErrorAction SilentlyContinue
+cd .\CFS_WEBAPP
+```
+
 3. Clone the repository:
 
 ```powershell
@@ -152,6 +173,12 @@ If you are using a fork, replace the URL with your own repository URL.
 
 ```text
 D:\CFS_WEBAPP\CFS_Stock_site
+```
+
+Or on `C:`:
+
+```text
+C:\CFS_WEBAPP\CFS_Stock_site
 ```
 
 3. Make sure the extracted folder is named exactly `CFS_Stock_site`.
