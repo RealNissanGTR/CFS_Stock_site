@@ -32,7 +32,7 @@
         </header>
 
         {% if message %}
-        <div class="card" style="margin-bottom: 1rem;">
+        <div class="card confirmation-box" style="margin-bottom: 1rem;">
             {{ message }}
         </div>
         {% endif %}
@@ -180,7 +180,7 @@
         </section>
     </main>
 
-    <div id="toast" class="toast">{{ message }}</div>
+    <div id="toast" class="toast confirmation-box">{{ message }}</div>
 
     <script>
         const categorySelect = document.getElementById("stock-category");

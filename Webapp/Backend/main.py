@@ -143,6 +143,8 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
 def logout():
     response = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
     response.delete_cookie(COOKIE_NAME)
+    response.delete_cookie(FLASH_COOKIE)
+    response.delete_cookie(STOCK_FORM_COOKIE)
     return response
 
 
@@ -197,6 +199,14 @@ def home(request: Request):
     user = require_login(request)
     flash = get_flash(request)
     stock_form_state = get_stock_form_state(request)
+    requested_item_code = request.query_params.get("item_code", "").strip()
+
+    reset_stock_form_cookie = False
+    if requested_item_code:
+        persisted_item_code = (stock_form_state.get("item_code") or "").strip()
+        if persisted_item_code and persisted_item_code != requested_item_code:
+            stock_form_state = {}
+            reset_stock_form_cookie = True
 
     with SessionLocal() as db:
         stocks = db.query(Stock).order_by(
@@ -232,11 +242,13 @@ def home(request: Request):
         "user": user,
         "categories": categories,
         "products": list(products_map.values()),
-        "selected_item_code": request.query_params.get("item_code", "").strip() or stock_form_state.get("item_code", ""),
+        "selected_item_code": requested_item_code or stock_form_state.get("item_code", ""),
         "stock_form_state": stock_form_state,
         "message": flash,
     })
     response.delete_cookie(FLASH_COOKIE)
+    if reset_stock_form_cookie:
+        response.delete_cookie(STOCK_FORM_COOKIE)
     return response
 
 

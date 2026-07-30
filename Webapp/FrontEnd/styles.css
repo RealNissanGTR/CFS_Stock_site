@@ -258,7 +258,7 @@ tbody tr td a {
     position: fixed;
     bottom: 1.5rem;
     right: 1.5rem;
-    background: rgba(6, 18, 40, 0.98);
+    background: linear-gradient(135deg, #1f5f2e, #0f3d1c);
     color: white;
     padding: 0.95rem 1.2rem;
     border-radius: 0.95rem;
@@ -273,6 +273,16 @@ tbody tr td a {
 .toast-visible {
     opacity: 1;
     transform: translateY(0);
+}
+
+.confirmation-box {
+    background: linear-gradient(135deg, #214f2b, #0f3819);
+    border: 1px solid rgba(164, 230, 180, 0.28);
+}
+
+.confirmation-box p,
+.confirmation-box {
+    color: #effaf1;
 }
 
 .btn-add {

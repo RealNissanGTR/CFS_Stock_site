@@ -24,6 +24,31 @@ function Find-Python {
         return @{ Exe = $pyCmd.Source; UsePyLauncher = $true }
     }
 
+    # Fallback for machines where Python is installed but not on PATH.
+    $installRoots = @(
+        (Join-Path $env:LocalAppData "Programs\Python"),
+        "${env:ProgramFiles}\Python",
+        "${env:ProgramFiles(x86)}\Python"
+    )
+
+    foreach ($root in $installRoots) {
+        if (-not $root -or -not (Test-Path $root)) {
+            continue
+        }
+
+        $pythonDirs = Get-ChildItem -Path $root -Directory -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match '^Python\d+' } |
+            Sort-Object Name -Descending
+
+        foreach ($dir in $pythonDirs) {
+            $candidate = Join-Path $dir.FullName "python.exe"
+            if (Test-Path $candidate) {
+                Write-Host "Detected Python at $candidate (not on PATH)."
+                return @{ Exe = $candidate; UsePyLauncher = $false }
+            }
+        }
+    }
+
     return $null
 }
 
