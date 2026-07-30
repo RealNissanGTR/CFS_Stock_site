@@ -19,7 +19,7 @@ A local web application for tracking inventory across Workshop and Paddock locat
 
 ## What this does
 
-CFS Stock is a simple, local-network inventory management system. It lets you:
+This webapp is a simple, local-network inventory management system. It lets you:
 
 - **View stock** across locations (Workshop, Paddock, or custom)
 - **Add stock** with work order codes and comments
@@ -70,11 +70,11 @@ cd .\CFS_WEBAPP
 3. Clone the repository:
 
 ```powershell
-git clone <YOUR_REPOSITORY_URL> CFS_Stock_site
+git clone <https://github.com/RealNissanGTR/CFS_Stock_site> CFS_Stock_site
 cd .\CFS_Stock_site
 ```
 
-Replace `<YOUR_REPOSITORY_URL>` with your actual Git URL.
+Replace `<https://github.com/RealNissanGTR/CFS_Stock_site>` with your actual Git URL.
 
 ### Option B: Download ZIP (no Git required)
 
