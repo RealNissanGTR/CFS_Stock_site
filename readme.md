@@ -78,7 +78,7 @@ Replace `<https://github.com/RealNissanGTR/CFS_Stock_site>` with your actual Git
 
 ### Option B: Download ZIP (no Git required)
 
-1. Download the project ZIP from your repository host (GitHub, OneDrive, SharePoint, etc.).
+1. Download the project ZIP from your repository (Open the Repo, Press the Code tab, Press the Green code button, select Download ZIP)
 2. Extract it to:
 
 ```text
