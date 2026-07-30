@@ -2,18 +2,27 @@
 
 A local web application for tracking inventory across Workshop and Paddock locations with automatic backups, admin panel, user management, and detailed activity logs.
 
+## At a glance
+
+- Built for local-network stock management
+- Web pages: Login, Home, Overview, Admin panel
+- Database: SQLite (`stock.db`)
+- Backup types: quick (automatic) and monthly (scheduled)
+
 ---
 
 ## Table of Contents
 1. [What this does](#what-this-does)
 2. [Required software](#required-software)
-3. [Download and prepare all project files](#download-and-prepare-all-project-files)
-4. [Setup (one-time)](#setup-one-time)
-5. [Starting the app](#starting-the-app)
-6. [Features & how to use](#features--how-to-use)
-7. [Backups & restoration](#backups--restoration)
-8. [Troubleshooting](#troubleshooting)
-9. [Tips & best practices](#tips--best-practices)
+3. [Quick start (5 minutes)](#quick-start-5-minutes)
+4. [Download and prepare all project files](#download-and-prepare-all-project-files)
+5. [Setup (one-time)](#setup-one-time)
+6. [Starting the app](#starting-the-app)
+7. [Common day-to-day tasks](#common-day-to-day-tasks)
+8. [Features & how to use](#features--how-to-use)
+9. [Backups & restoration](#backups--restoration)
+10. [Troubleshooting](#troubleshooting)
+11. [Tips & best practices](#tips--best-practices)
 
 ---
 
@@ -52,6 +61,43 @@ Install these before proceeding:
 
 ---
 
+## Quick start (5 minutes)
+
+If you just want to run the app now, use these steps.
+
+### 1. Go to backend folder
+
+```powershell
+cd "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend"
+```
+
+### 2. Create and activate virtual environment
+
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+```
+
+### 3. Install dependencies
+
+```powershell
+python -m pip install --upgrade pip
+python -m pip install -r "..\..\requirements.txt"
+```
+
+### 4. Start the app
+
+```powershell
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+### 5. Open in browser
+
+- Local: http://localhost:8000
+- Other devices on same Wi-Fi: http://YOUR_PC_IP:8000
+
+---
+
 ## Download and prepare all project files
 
 Choose one of these methods.
@@ -70,11 +116,11 @@ cd .\CFS_WEBAPP
 3. Clone the repository:
 
 ```powershell
-git clone <https://github.com/RealNissanGTR/CFS_Stock_site> CFS_Stock_site
+git clone https://github.com/RealNissanGTR/CFS_Stock_site CFS_Stock_site
 cd .\CFS_Stock_site
 ```
 
-Replace `<https://github.com/RealNissanGTR/CFS_Stock_site>` with your actual Git URL.
+If you are using a fork, replace the URL with your own repository URL.
 
 ### Option B: Download ZIP (no Git required)
 
@@ -119,11 +165,10 @@ D:\CFS_WEBAPP\CFS_Stock_site\
 │   │   │   └── db_init.py
 │   │   ├── backup\
 │   │   │   ├── backup_db.py
-│   │   │   ├── __init__.py
 │   │   │   └── db_backups\
 │   │   │       └── monthly\
 │   │   ├── logs\
-│   │   ├── stock_import\
+│   │   ├── Stock_Import\
 │   │   │   └── import_stock_xlsx.py
 │   │   └── venv\
 │   └── FrontEnd\
@@ -132,7 +177,7 @@ D:\CFS_WEBAPP\CFS_Stock_site\
 │       ├── overview.html
 │       ├── login.html
 │       ├── styles.css
-│       └── static\
+│       └── img\
 ├── requirements.txt
 └── readme.md
 ```
@@ -184,55 +229,7 @@ Press `Ctrl+C` to stop.
 ### Option B: PowerShell wrapper (recommended for 24/7 use)
 This runs the app in the background and logs output.
 
-1. Ensure `start_uvicorn.ps1` is in `D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend\`:
-
-```powershell
-param(
-    [string]$BindHost = "0.0.0.0",
-    [int]$Port = 8000
-)
-
-$backendDir = "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend"
-$venvPython = Join-Path $backendDir "venv\Scripts\python.exe"
-$logDir = Join-Path $backendDir "logs"
-
-New-Item -ItemType Directory -Path $logDir -Force | Out-Null
-
-$pythonCmd = $null
-$pythonArgs = @()
-
-if (Test-Path $venvPython) {
-    $pythonCmd = $venvPython
-    $pythonArgs = @("-m", "uvicorn", "main:app", "--host", $BindHost, "--port", $Port.ToString())
-}
-else {
-    $pythonResult = Get-Command python -ErrorAction SilentlyContinue
-    if (-not $pythonResult) {
-        throw "Python was not found. Install Python and try again."
-    }
-    $pythonCmd = $pythonResult.Source
-    $pythonArgs = @("-m", "uvicorn", "main:app", "--host", $BindHost, "--port", $Port.ToString())
-}
-
-while ($true) {
-    $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-    $logFile = Join-Path $logDir "uvicorn-$timestamp.log"
-
-    Write-Host ("Starting uvicorn on {0}:{1}" -f $BindHost, $Port)
-    Write-Host ("Log file: {0}" -f $logFile)
-
-    Push-Location $backendDir
-    try {
-        & $pythonCmd @pythonArgs 2>&1 | Tee-Object -FilePath $logFile
-    }
-    finally {
-        Pop-Location
-    }
-
-    Write-Host "uvicorn stopped. Restarting in 3 seconds..."
-    Start-Sleep -Seconds 3
-}
-```
+1. Ensure `start_uvicorn.ps1` exists in `D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend\`.
 
 2. Run it:
 
@@ -240,7 +237,9 @@ while ($true) {
 powershell -ExecutionPolicy Bypass -File "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend\start_uvicorn.ps1"
 ```
 
-3. Leave the PowerShell window open. Logs are saved in `Webapp/Backend/logs/`
+3. Leave the PowerShell window open.
+
+4. Log files are saved in `Webapp/Backend/logs/`.
 
 ### Option C: Windows Task Scheduler (runs at startup)
 For true 24/7 operation:
@@ -330,14 +329,14 @@ The item counter shows how many are in stock per location in real time.
 ### 5. Import from Excel
 **For bulk item creation**
 
-Place your `.xlsx` file in `Webapp/Backend/stock_import/` with columns:
+Place your `.xlsx` file in `Webapp/Backend/Stock_Import/` with columns:
 - Column A: Category
 - Column B: Product code (item code)
 - Column C: Product name
 
 Run (from PowerShell in Backend folder):
 ```powershell
-python .\stock_import\import_stock_xlsx.py
+python .\Stock_Import\import_stock_xlsx.py
 ```
 
 Items will be added at default location (Workshop) with zero stock count.
@@ -628,4 +627,4 @@ If something isn't working:
 ---
 
 **Version:** 1.0  
-**Last updated:** July 2026
+**Last updated:** 30 July 2026
