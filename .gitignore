@@ -2,6 +2,7 @@ __pycache__
 stock.db
 logs
 venv
+.venv
 db_backups
 stock.quick.db
 img
