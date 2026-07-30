@@ -29,7 +29,7 @@ CFS Stock is a simple, local-network inventory management system. It lets you:
 - **Export** current stock, logs, and users to timestamped XLSX
 - **Manage users** and admin roles
 - **Track activity** with detailed logs showing who, what, when, and where
-- **Auto-backup** after every edit (quick backup) + weekly snapshots
+- **Auto-backup** after every edit (quick backup) + monthly snapshots
 - **Run indefinitely** on a local machine with PowerShell wrapper
 
 ---
@@ -66,7 +66,7 @@ D:\CFS_WEBAPP\CFS_Stock_site\
 │   │   │   ├── backup_db.py
 │   │   │   ├── __init__.py
 │   │   │   └── db_backups\
-│   │   │       └── weekly\
+│   │   │       └── monthly\
 │   │   ├── logs\
 │   │   ├── stock_import\
 │   │   │   └── import_stock_xlsx.py
@@ -300,10 +300,11 @@ Two types of backups are automatically managed:
    - Overwrites the previous quick backup
    - Use if something went wrong in the last edit
 
-2. **Weekly backup** (`db_backups/weekly/stock-weekly-YYYYMMDD-HHMMSS.db`)
-   - Created once per week on a schedule
+2. **Monthly backup** (`db_backups/monthly/stock-monthly-YYYYMMDD-HHMMSS.db`)
+   - Created once every 30 days on a schedule
    - Timestamped so multiple copies are kept
-   - Use to restore from a week ago if major data loss occurs
+   - Keeps only logs from the last 30 days in the backup copy
+   - Use to restore from roughly a month ago if major data loss occurs
 
 ### Quick backup (automatic on every edit)
 
@@ -319,24 +320,24 @@ This happens in these routes:
 - `/inventory/change` (add or remove)
 - (You can add more as needed)
 
-### Weekly backup (manual or scheduled)
+### Monthly backup (manual or scheduled)
 
-#### Manual weekly backup
+#### Manual monthly backup
 ```powershell
 cd "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend"
 .\venv\Scripts\Activate.ps1
-python backup_db.py weekly
+python backup_db.py monthly
 ```
 
-#### Scheduled weekly backup with Task Scheduler
+#### Scheduled monthly backup with Task Scheduler
 1. Open Task Scheduler
-2. Create Basic Task → Name: "CFS Weekly Backup"
-3. Trigger: "Weekly" (choose day/time, e.g., Sunday at 11 PM)
+2. Create Basic Task → Name: "CFS Monthly Backup"
+3. Trigger: "Monthly" (choose a day/time that fits your backup cycle)
 4. Action:
    - Program/script: `powershell.exe`
    - Arguments:
    ```powershell
-   -NoProfile -ExecutionPolicy Bypass -Command "cd 'D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend'; .\venv\Scripts\Activate.ps1; python backup_db.py weekly"
+   -NoProfile -ExecutionPolicy Bypass -Command "cd 'D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend'; .\venv\Scripts\Activate.ps1; python backup_db.py monthly"
    ```
 5. Click OK
 
@@ -351,18 +352,18 @@ cd "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend"
 python backup_db.py restore-quick
 ```
 
-#### Restore the latest weekly backup
+#### Restore the latest monthly backup
 ```powershell
 cd "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend"
 .\venv\Scripts\Activate.ps1
-python backup_db.py restore-latest-weekly
+python backup_db.py restore-latest-monthly
 ```
 
 #### Restore a specific backup file
 ```powershell
 cd "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend"
 .\venv\Scripts\Activate.ps1
-python backup_db.py restore-file "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend\backup\db_backups\weekly\stock-weekly-20260729-230000.db"
+python backup_db.py restore-file "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend\backup\db_backups\monthly\stock-monthly-20260729-230000.db"
 ```
 
 #### Manual restore (without Python)
@@ -447,12 +448,12 @@ python backup_db.py restore-file "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend\ba
 - Restart the app
 
 ### Backup file too large
-**Symptom:** Weekly backups are consuming lots of disk space
+**Symptom:** Monthly backups are consuming lots of disk space
 
 **Fix:**
-- Delete old weekly backups manually:
-  ```powershell
-  cd "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend\backup\db_backups\weekly"
+- Delete old monthly backups manually:
+   ```powershell
+   cd "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend\backup\db_backups\monthly"
   # Delete files older than 30 days manually or use:
   Get-ChildItem | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } | Remove-Item
   ```
@@ -511,8 +512,8 @@ python backup_db.py restore-file "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend\ba
 
 ### Backup strategy
 - Quick backups happen automatically; don't rely on them alone
-- Set up weekly backups and verify they're being created
-- Keep at least 4 weeks of weekly backups
+- Set up monthly backups and verify they're being created
+- Keep at least 4 monthly backups
 - Copy backups to an external drive monthly
 
 ### Performance
@@ -536,9 +537,9 @@ python backup_db.py restore-file "D:\CFS_WEBAPP\CFS_Stock_site\Webapp\Backend\ba
 
 ### Maintenance schedule
 - **Daily**: check the app is running (visit the URL)
-- **Weekly**: verify weekly backups are being created
+- **Monthly**: verify monthly backups are being created
 - **Monthly**: delete old log files and backups
-- **Quarterly**: test a restore from a weekly backup
+- **Quarterly**: test a restore from a monthly backup
 
 ---
 
