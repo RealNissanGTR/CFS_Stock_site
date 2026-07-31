@@ -416,11 +416,17 @@ def admin_edit_user(
     is_admin: str = Form(None),
 ):
     admin = require_admin(request)
+
+    normalized_is_admin = None
+    if is_admin is not None:
+        normalized = is_admin.strip().lower()
+        normalized_is_admin = normalized in {"1", "true", "on", "yes"}
+
     success = update_user(
         user_id=user_id,
         new_username=new_username.strip() or None,
         new_password=new_password.strip() or None,
-        is_admin=bool(is_admin),
+        is_admin=normalized_is_admin,
     )
     message = "User updated successfully." if success else "Unable to update user."
     response = RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
